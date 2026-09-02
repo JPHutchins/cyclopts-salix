@@ -283,11 +283,52 @@ def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
     return out
 
 
+def _struct_field_infos(hint) -> dict[str, FieldInfo]:
+    import dataclasses
+
+    names = hint.__struct_fields__  # type: ignore[attr-defined]
+    annotations = hint.__struct_annotations__  # type: ignore[attr-defined]
+    defaults = hint.__struct_defaults__  # type: ignore[attr-defined]
+    required_count = len(names) - len(defaults)
+    fields = []
+    for position, name in enumerate(names):
+        field = dataclasses.Field(
+            default=(
+                dataclasses.MISSING
+                if position < required_count
+                else defaults[position - required_count]
+            ),
+            default_factory=dataclasses.MISSING,
+            init=True,
+            repr=True,
+            hash=None,
+            compare=True,
+            metadata={},
+            kw_only=False,
+            **(
+                {"doc": None}
+                if "doc" in dataclasses.Field.__init__.__code__.co_varnames
+                else {}
+            ),
+        )
+        field.name = name
+        field.type = annotations[position]
+        fields.append(field)
+    return _dataclass_field_infos_from_fields(hint, fields)
+
+
 def _dataclass_field_infos(hint) -> dict[str, FieldInfo]:
     import dataclasses
 
+    if hasattr(hint, "__struct_fields__"):
+        return _struct_field_infos(hint)
+    return _dataclass_field_infos_from_fields(hint, dataclasses.fields(hint))
+
+
+def _dataclass_field_infos_from_fields(hint, fields) -> dict[str, FieldInfo]:
+    import dataclasses
+
     out = {}
-    fields = dataclasses.fields(hint)
     type_hints = get_type_hints(hint, include_extras=True)  # resolves stringified type hints
     for f in fields:
         if f.default_factory is not dataclasses.MISSING:
