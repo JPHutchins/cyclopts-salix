@@ -15,6 +15,7 @@ from typing import (  # noqa: UP035
 )
 
 from attrs import define, field
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -705,11 +706,10 @@ def get_parameters(hint: T, skip_converter_params: bool = False) -> tuple[T, lis
     return hint, parameters
 
 
-@define
-class CycloptsConfig:
+class CycloptsConfig(Struct, frozen=True):
     """
     Intended for storing additional data to a ``__cyclopts__`` attribute via decoration.
     """
 
     obj: Any = None
-    parameters: list[Parameter] = field(factory=list, init=False)
+    parameters: list[Parameter] = []

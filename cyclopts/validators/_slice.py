@@ -1,3 +1,4 @@
+from salix import Struct
 from typing import Any
 
 from cyclopts.utils import frozen
@@ -35,8 +36,7 @@ def _selects_nothing(s: slice) -> bool:
     return start >= stop if step > 0 else start <= stop
 
 
-@frozen(kw_only=True)
-class Slice:
+class Slice(Struct, frozen=True):
     """Assertions on properties of a :class:`slice`.
 
     If the annotated parameter is a container (``list``, ``tuple``, ``set``,

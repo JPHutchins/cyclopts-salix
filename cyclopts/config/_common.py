@@ -1,6 +1,6 @@
 import errno
 import os
-from abc import ABC, abstractmethod
+from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from contextlib import suppress
 from itertools import chain
@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from attrs import define, field
+from salix import Struct
 
 from cyclopts.argument import ArgumentCollection, update_argument_collection
 from cyclopts.exceptions import CycloptsError
@@ -22,18 +23,23 @@ if TYPE_CHECKING:
     from cyclopts.core import App
 
 
-@define(kw_only=True)
-class ConfigBase(ABC):
+_ConfigBaseMeta = type("_ConfigBaseMeta", (type(Struct), ABCMeta), {})
+
+
+class ConfigBase(Struct, frozen=False, metaclass=_ConfigBaseMeta):
     """Base class for configuration sources.
 
     Handles the common logic of processing configuration dictionaries
     and updating ArgumentCollections.
     """
 
-    root_keys: Iterable[str] = field(default=(), converter=_root_keys_converter)
-    allow_unknown: bool = field(default=False)
-    use_commands_as_keys: bool = field(default=True)
-    _source: str | None = field(default=None, alias="source")
+    root_keys: Iterable[str] = ()
+    allow_unknown: bool = False
+    use_commands_as_keys: bool = True
+    _source: str | None = None
+
+    def __post_init__(self) -> None:
+        self.root_keys = _root_keys_converter(self.root_keys)
 
     @property
     @abstractmethod
@@ -124,23 +130,27 @@ class FileCacheKey:
         return self._mtime == other._mtime and self._size == other._size and self.path == other.path
 
 
-@define
-class ConfigFromFile(ConfigBase):
+class ConfigFromFile(ConfigBase, frozen=False):
     """Configuration source that loads from a file.
 
     Supports file caching and parent directory searching.
     """
 
-    path: str | Path = field(converter=Path)
-    must_exist: bool = field(default=False, kw_only=True)
-    search_parents: bool = field(default=False, kw_only=True)
-    encoding: str | None = field(default=None, kw_only=True)
+    path: str | Path | None = None
+    must_exist: bool = False
+    search_parents: bool = False
+    encoding: str | None = None
 
-    _config: dict[str, Any] | None = field(default=None, init=False, repr=False)
+    _config: dict[str, Any] | None = None
     "Loaded configuration structure (to be loaded by subclassed ``_load_config`` method)."
 
-    _config_cache_key: FileCacheKey | None = field(default=None, init=False, repr=False)
+    _config_cache_key: FileCacheKey | None = None
     "Conditions under which ``_config`` was loaded."
+
+    def __post_init__(self) -> None:
+        if self.path is None:
+            raise TypeError("missing required argument: 'path'")
+        self.path = Path(self.path)
 
     @abstractmethod
     def _load_config(self, path: Path) -> dict[str, Any]:
@@ -208,14 +218,17 @@ class ConfigFromFile(ConfigBase):
         self._source = value
 
 
-@define
-class Dict(ConfigBase):
+class Dict(ConfigBase, frozen=False):
     """Configuration source from an in-memory dictionary.
 
     Useful for programmatically generated configurations.
     """
 
-    data: dict[str, Any]
+    data: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.data is None:
+            raise TypeError("missing required argument: 'data'")
 
     @property
     def config(self) -> dict[str, Any]:

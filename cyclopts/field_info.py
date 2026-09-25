@@ -11,7 +11,7 @@ from typing import (  # noqa: F401
 )
 
 import attrs
-from attrs import field
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -49,18 +49,17 @@ def _replace_annotated_type(src_type, dst_type):
     return Annotated[(dst_type,) + get_args(src_type)[1:]]  # pyright: ignore
 
 
-@attrs.define
-class FieldInfo:
+class FieldInfo(Struct, frozen=True):
     """Extension of :class:`inspect.Parameter`."""
 
     names: tuple[str, ...] = ()
     kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
 
-    required: bool = field(kw_only=True, default=False)
-    default: Any = field(default=inspect.Parameter.empty, kw_only=True)
-    annotation: Any = field(default=inspect.Parameter.empty, kw_only=True)
+    required: bool = False
+    default: Any = inspect.Parameter.empty
+    annotation: Any = inspect.Parameter.empty
 
-    help: str | None = field(default=None, kw_only=True)
+    help: str | None = None
     """Can be populated by additional metadata from another library; e.g. ``pydantic.FieldInfo.description``."""
 
     ###################
@@ -127,7 +126,9 @@ class FieldInfo:
         return self.kind in (KEYWORD_ONLY, VAR_KEYWORD)
 
     def evolve(self, **kwargs):
-        return attrs.evolve(self, **kwargs)
+        values = {name: getattr(self, name) for name in self.__struct_fields__}
+        values.update(kwargs)
+        return type(self)(**values)
 
 
 def _typed_dict_field_infos(typeddict) -> dict[str, FieldInfo]:

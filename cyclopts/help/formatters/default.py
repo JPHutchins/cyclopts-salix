@@ -1,3 +1,4 @@
+from salix import Struct
 """Default Rich-based help formatter."""
 
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -14,8 +15,7 @@ if TYPE_CHECKING:
     from cyclopts.help.specs import ColumnSpec, PanelSpec, TableSpec
 
 
-@define(kw_only=True)
-class DefaultFormatter:
+class DefaultFormatter(Struct, frozen=True):
     """Default help formatter using Rich library with customizable specs.
 
     Parameters

@@ -21,7 +21,7 @@ def test_config_yaml(tmp_path):
             """
         )
     )
-    config = Yaml(fn)
+    config = Yaml(path=fn)
     assert config.config == {
         "foo": {
             "key1": "foo1",
@@ -43,7 +43,7 @@ def test_config_yaml_default_encoding_reads_non_ascii(tmp_path):
     """
     fn = tmp_path / "test.yaml"
     fn.write_text("name: café\n")
-    config = Yaml(fn)
+    config = Yaml(path=fn)
     assert config.config == {"name": "café"}
 
 
@@ -51,7 +51,7 @@ def test_config_yaml_explicit_encoding(tmp_path):
     """An explicit ``encoding`` reads a file written in that (non-UTF-8) encoding."""
     fn = tmp_path / "test.yaml"
     fn.write_text("name: café\n", encoding="latin-1")
-    config = Yaml(fn, encoding="latin-1")
+    config = Yaml(path=fn, encoding="latin-1")
     assert config.config == {"name": "café"}
 
 
@@ -61,7 +61,7 @@ def test_config_yaml_empty_document(tmp_path, contents):
     fn = tmp_path / "test.yaml"
     fn.write_text(contents)
 
-    config = Yaml(fn)
+    config = Yaml(path=fn)
     assert config.config == {}
 
     app = App(config=config, result_action="return_value")
@@ -78,7 +78,7 @@ def test_config_yaml_non_mapping_document(tmp_path):
     fn = tmp_path / "test.yaml"
     fn.write_text("- a\n- b\n")
 
-    app = App(config=Yaml(fn, source="test.yaml"), result_action="return_value")
+    app = App(config=Yaml(path=fn, _source="test.yaml"), result_action="return_value")
 
     @app.default
     def main(x: int = 7):

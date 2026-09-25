@@ -1,3 +1,4 @@
+from salix import Struct
 from typing import TYPE_CHECKING, Any
 
 from cyclopts.command_spec import CommandSpec
@@ -8,8 +9,7 @@ if TYPE_CHECKING:
     from cyclopts.core import App
 
 
-@frozen
-class RegisteredCommand:
+class RegisteredCommand(Struct, frozen=True):
     """A command with the names it was registered under.
 
     Parameters

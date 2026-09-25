@@ -40,7 +40,7 @@ def test_yaml_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -65,7 +65,7 @@ def test_yaml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -91,7 +91,7 @@ def test_yaml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User] = None):  # pyright: ignore
@@ -115,7 +115,7 @@ def test_yaml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -142,7 +142,7 @@ def test_yaml_list_of_typeddict(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(configs: list[Config]):
@@ -196,7 +196,7 @@ def test_yaml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(people: list[Person]):
@@ -225,7 +225,7 @@ def test_yaml_mixed_config_and_cli(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User], verbose: bool = False):

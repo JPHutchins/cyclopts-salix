@@ -42,7 +42,7 @@ def test_toml_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -67,7 +67,7 @@ def test_toml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -93,7 +93,7 @@ def test_toml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User] = None):  # pyright: ignore
@@ -117,7 +117,7 @@ def test_toml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -148,7 +148,7 @@ def test_toml_list_of_typeddict(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(configs: list[Config]):
@@ -206,7 +206,7 @@ def test_toml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(people: list[Person]):
@@ -235,7 +235,7 @@ def test_toml_mixed_config_and_cli(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User], verbose: bool = False):
@@ -260,7 +260,7 @@ def test_toml_inline_table_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):

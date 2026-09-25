@@ -1078,7 +1078,7 @@ def test_pydantic_empty_dict_config_value(app, assert_parse_args):
     class Options(BaseModel):
         threshold: int = 5
 
-    app.config = (Dict({"options": {}}),)
+    app.config = (Dict(data={"options": {}}),)
 
     @app.default
     def main(options: Options):

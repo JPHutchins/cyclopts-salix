@@ -398,7 +398,7 @@ class ArgumentCollection(list[Argument]):
                 if updated_kind is None:
                     continue
 
-                sub_field_info.kind = updated_kind
+                sub_field_info = sub_field_info.evolve(kind=updated_kind)
 
                 if sub_field_info.is_keyword_only:
                     positional_index = None
