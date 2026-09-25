@@ -26,7 +26,7 @@ def test_config_json(tmp_path):
             """
         )
     )
-    config = Json(fn)
+    config = Json(path=fn)
     assert config.config == {
         "foo": {
             "key1": "foo1",
@@ -48,7 +48,7 @@ def test_config_json_default_encoding_reads_non_ascii(tmp_path):
     """
     fn = tmp_path / "test.json"
     fn.write_text('{"name": "café"}')
-    config = Json(fn)
+    config = Json(path=fn)
     assert config.config == {"name": "café"}
 
 
@@ -56,7 +56,7 @@ def test_config_json_explicit_encoding(tmp_path):
     """An explicit ``encoding`` reads a file written in that (non-UTF-8) encoding."""
     fn = tmp_path / "test.json"
     fn.write_text('{"name": "café"}', encoding="latin-1")
-    config = Json(fn, encoding="latin-1")
+    config = Json(path=fn, encoding="latin-1")
     assert config.config == {"name": "café"}
 
 
@@ -65,7 +65,7 @@ Test file-caching and chdir after app has been instantiated. See discussion:
     https://github.com/BrianPugh/cyclopts/issues/309
 """
 
-app = App(config=Json("config.json"), result_action="return_value")
+app = App(config=Json(path="config.json"), result_action="return_value")
 
 
 @app.command
@@ -88,7 +88,7 @@ def test_config_1(config_path, capsys, mocker):
         json.dump({"create": {"name": "Alice", "age": 30}}, f)
 
     json_config = app.config[0]
-    spy_load_config = mocker.patch.object(json_config, "_load_config", wraps=json_config._load_config)  # pyright: ignore[reportAttributeAccessIssue]
+    spy_load_config = mocker.patch.object(type(json_config), "_load_config", wraps=json_config._load_config)  # pyright: ignore[reportAttributeAccessIssue]
     app("create")
     assert capsys.readouterr().out == "Alice is 30 years old.\n"
     assert spy_load_config.call_count == 1

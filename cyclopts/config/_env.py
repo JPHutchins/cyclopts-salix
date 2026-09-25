@@ -2,6 +2,7 @@ import os
 from typing import TYPE_CHECKING
 
 from attrs import define, field
+from salix import Struct
 
 from cyclopts.argument import Argument, ArgumentCollection, Token
 
@@ -13,12 +14,11 @@ def _transform(s: str) -> str:
     return s.upper().replace("-", "_").replace(".", "_").lstrip("_")
 
 
-@define
-class Env:
+class Env(Struct, frozen=True):
     prefix: str = ""
-    source: str = field(default="env", kw_only=True)
-    command: bool = field(default=True, kw_only=True)
-    show: bool = field(default=True, kw_only=True)
+    source: str = "env"
+    command: bool = True
+    show: bool = True
 
     def _prefix(self, commands: tuple[str, ...]) -> str:
         prefix = self.prefix

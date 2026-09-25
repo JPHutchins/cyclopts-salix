@@ -1,3 +1,4 @@
+from salix import Struct
 import math
 import sys
 import textwrap
@@ -251,8 +252,7 @@ class AsteriskRenderer:
         return "*" if entry.required else ""
 
 
-@frozen
-class ColumnSpec:
+class ColumnSpec(Struct, frozen=True):
     """Specification for a single column in a help table.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to define
@@ -498,8 +498,7 @@ def get_default_parameter_columns(
         )
 
 
-@frozen
-class TableSpec:
+class TableSpec(Struct, frozen=True):
     """Specification for table layout and styling.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to control
@@ -708,8 +707,7 @@ class TableSpec:
         return evolve(self, **kwargs)
 
 
-@frozen
-class PanelSpec:
+class PanelSpec(Struct, frozen=True):
     """Specification for panel (outer box) styling.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to control

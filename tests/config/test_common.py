@@ -66,17 +66,17 @@ def function1(key1, key2):
 
 @pytest.fixture
 def config(tmp_path):
-    return Dummy(tmp_path / "cyclopts-config-test-file.dummy")
+    return Dummy(path=tmp_path / "cyclopts-config-test-file.dummy")
 
 
 @pytest.fixture
 def config_root_keys(tmp_path):
-    return DummyRootKeys(tmp_path / "cyclopts-config-test-file.dummy")
+    return DummyRootKeys(path=tmp_path / "cyclopts-config-test-file.dummy")
 
 
 @pytest.fixture
 def config_sub_keys(tmp_path):
-    return DummySubKeys(tmp_path / "cyclopts-config-test-file.dummy")
+    return DummySubKeys(path=tmp_path / "cyclopts-config-test-file.dummy")
 
 
 @pytest.fixture
@@ -126,7 +126,7 @@ def test_config_common_must_exist_false(config, mocker):
 
     If the file does not exist, then have an empty config.
     """
-    spy_load_config = mocker.spy(config, "_load_config")
+    spy_load_config = mocker.spy(type(config), "_load_config")
     config.must_exist = False
     _ = config.config  # does NOT raise a FileNotFoundError
     assert config.config == {}
@@ -143,7 +143,7 @@ def test_config_common_must_exist_true(config):
 @pytest.mark.parametrize("must_exist", [True, False])
 def test_config_common_search_parents_absolute_true_exists(tmp_path, must_exist, config, mocker):
     """Tests finding an existing parent if path is absolute."""
-    spy_load_config = mocker.spy(config, "_load_config")
+    spy_load_config = mocker.spy(type(config), "_load_config")
 
     original_path = config.path
     original_path.touch()
@@ -153,12 +153,12 @@ def test_config_common_search_parents_absolute_true_exists(tmp_path, must_exist,
 
     _ = config.config
 
-    spy_load_config.assert_called_once_with(original_path)
+    spy_load_config.assert_called_once_with(config, original_path)
 
 
 def test_config_common_search_parents_false_ignores_parent(tmp_path, config, mocker):
     """A missing path must not fall back to a parent's same-named config when ``search_parents=False``."""
-    spy_load_config = mocker.spy(config, "_load_config")
+    spy_load_config = mocker.spy(type(config), "_load_config")
 
     original_path = config.path
     original_path.touch()  # a same-named file exists in the parent directory
@@ -173,8 +173,8 @@ def test_config_common_search_parents_relative_true_exists(tmp_path, mocker, mon
     """Tests finding an existing parent if path is relative."""
     config_path = tmp_path / "cyclopts-config-test-file.dummy"
     config_path.touch()
-    config = Dummy("cyclopts-config-test-file.dummy", search_parents=True)
-    spy_load_config = mocker.spy(config, "_load_config")
+    config = Dummy(path="cyclopts-config-test-file.dummy", search_parents=True)
+    spy_load_config = mocker.spy(type(config), "_load_config")
 
     deep_dir = tmp_path / "foo" / "bar" / "baz"
     deep_dir.mkdir(parents=True)
@@ -182,12 +182,12 @@ def test_config_common_search_parents_relative_true_exists(tmp_path, mocker, mon
 
     _ = config.config
 
-    spy_load_config.assert_called_once_with(config_path.resolve())
+    spy_load_config.assert_called_once_with(config, config_path.resolve())
 
 
 def test_config_common_must_exist_true_search_parents_true_missing(tmp_path, config, mocker):
     """Tests finding a missing parent."""
-    spy_load_config = mocker.spy(config, "_load_config")
+    spy_load_config = mocker.spy(type(config), "_load_config")
 
     config.path = tmp_path / "folder1" / "folder2" / "folder3" / "folder4" / config.path.name
     config.must_exist = True
@@ -201,7 +201,7 @@ def test_config_common_must_exist_true_search_parents_true_missing(tmp_path, con
 
 def test_config_common_must_exist_false_search_parents_true_missing(tmp_path, config, mocker):
     """Tests finding a missing parent."""
-    spy_load_config = mocker.spy(config, "_load_config")
+    spy_load_config = mocker.spy(type(config), "_load_config")
 
     config.path = tmp_path / "folder1" / "folder2" / "folder3" / "folder4" / config.path.name
     config.must_exist = False
@@ -296,7 +296,7 @@ def test_config_common_subkeys(app, config_sub_keys):
 def test_config_exception_during_load_config_no_msg(tmp_path):
     path = tmp_path / "config"
     path.touch()
-    dummy_error_config = DummyErrorConfigNoMsg(path)
+    dummy_error_config = DummyErrorConfigNoMsg(path=path)
     with pytest.raises(CycloptsError) as e:
         _ = dummy_error_config.config
     assert str(e.value) == "ValueError"
@@ -305,7 +305,7 @@ def test_config_exception_during_load_config_no_msg(tmp_path):
 def test_config_exception_during_load_config_msg(tmp_path):
     path = tmp_path / "config"
     path.touch()
-    dummy_error_config = DummyErrorConfigMsg(path)
+    dummy_error_config = DummyErrorConfigMsg(path=path)
     with pytest.raises(CycloptsError) as e:
         _ = dummy_error_config.config
     assert str(e.value) == "ValueError: My exception's message."
@@ -320,7 +320,7 @@ def test_config_common_empty_document_is_empty_mapping(tmp_path):
     """A file whose document is empty loads as an empty config, on every access."""
     path = tmp_path / "config"
     path.touch()
-    config = DummyEmptyDocument(path)
+    config = DummyEmptyDocument(path=path)
 
     assert config.config == {}  # freshly loaded
     assert config.config == {}  # served from the cache

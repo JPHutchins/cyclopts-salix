@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 from attrs import define, field, validators
+from salix import Struct
 
 from cyclopts.docs.markdown import generate_markdown_docs
 from cyclopts.utils import import_app
@@ -22,24 +23,36 @@ from mkdocs.plugins import BasePlugin, get_plugin_logger
 logger = get_plugin_logger(__name__)
 
 
-@define(kw_only=True)
-class DirectiveOptions:
+class DirectiveOptions(Struct, frozen=True):
     """Configuration for the ::: cyclopts directive."""
 
-    module: str = field(validator=validators.instance_of(str))
-    heading_level: int = field(default=2, validator=validators.instance_of(int))
-    max_heading_level: int = field(default=6, validator=validators.instance_of(int))
-    commands: list[str] | None = field(default=None, validator=validators.optional(validators.instance_of(list)))
-    exclude_commands: list[str] | None = field(
-        default=None, validator=validators.optional(validators.instance_of(list))
-    )
-    recursive: bool = field(default=True, validator=validators.instance_of(bool))
-    include_hidden: bool = field(default=False, validator=validators.instance_of(bool))
-    flatten_commands: bool = field(default=False, validator=validators.instance_of(bool))
-    generate_toc: bool = field(default=True, validator=validators.instance_of(bool))
-    code_block_title: bool = field(default=False, validator=validators.instance_of(bool))
-    skip_preamble: bool = field(default=False, validator=validators.instance_of(bool))
-    usage_name: str | None = field(default=None, validator=validators.optional(validators.instance_of(str)))
+    module: str
+    heading_level: int = 2
+    max_heading_level: int = 6
+    commands: list[str] | None = None
+    exclude_commands: list[str] | None = None
+    recursive: bool = True
+    include_hidden: bool = False
+    flatten_commands: bool = False
+    generate_toc: bool = True
+    code_block_title: bool = False
+    skip_preamble: bool = False
+    usage_name: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.module is not None and not isinstance(self.module, str):
+            raise TypeError("'module' must be a string")
+        if not isinstance(self.heading_level, int):
+            raise TypeError("'heading_level' must be an int")
+        if not isinstance(self.max_heading_level, int):
+            raise TypeError("'max_heading_level' must be an int")
+        if self.commands is not None and not isinstance(self.commands, list):
+            raise TypeError("'commands' must be a list")
+        if self.exclude_commands is not None and not isinstance(self.exclude_commands, list):
+            raise TypeError("'exclude_commands' must be a list")
+        for name in ("recursive", "include_hidden", "flatten_commands", "generate_toc", "code_block_title", "skip_preamble"):
+            if not isinstance(getattr(self, name), bool):
+                raise TypeError(f"'{name}' must be a bool")
 
     @classmethod
     def from_directive_block(

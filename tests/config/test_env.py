@@ -21,7 +21,7 @@ def test_config_env_default(apps, monkeypatch):
 
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR", "100")
     monkeypatch.setenv("CYCLOPTS_TEST_APP_SOMETHING_ELSE", "100")
-    Env("CYCLOPTS_TEST_APP_", command=False)(apps, (), argument_collection)
+    Env(prefix="CYCLOPTS_TEST_APP_", command=False)(apps, (), argument_collection)
 
     assert len(argument_collection[0].tokens) == 1
     assert argument_collection[0].tokens[0].keyword == "CYCLOPTS_TEST_APP_BAR"
@@ -40,7 +40,7 @@ def test_config_env_default_already_populated(apps, monkeypatch):
 
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR", "100")
     monkeypatch.setenv("CYCLOPTS_TEST_APP_SOMETHING_ELSE", "100")
-    Env("CYCLOPTS_TEST_APP_", command=False)(apps, (), argument_collection)
+    Env(prefix="CYCLOPTS_TEST_APP_", command=False)(apps, (), argument_collection)
 
     assert len(argument_collection[0].tokens) == 1
     assert argument_collection[0].tokens[0].keyword == "--bar"
@@ -57,7 +57,7 @@ def test_config_env_command_true(apps, monkeypatch):
     argument_collection = ArgumentCollection._from_callable(foo)
 
     monkeypatch.setenv("CYCLOPTS_TEST_APP_FOO_BAR", "100")
-    Env("CYCLOPTS_TEST_APP_", command=True)(apps, ("foo",), argument_collection)
+    Env(prefix="CYCLOPTS_TEST_APP_", command=True)(apps, ("foo",), argument_collection)
 
     assert len(argument_collection[0].tokens) == 1
     assert argument_collection[0].tokens[0].keyword == "CYCLOPTS_TEST_APP_FOO_BAR"
@@ -76,7 +76,7 @@ def test_config_env_dict(apps, monkeypatch):
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR_BAR_BUZZ", "100")
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR_BAR_FIZZ", "200")
 
-    Env("CYCLOPTS_TEST_APP_", command=False)(apps, (), ac)
+    Env(prefix="CYCLOPTS_TEST_APP_", command=False)(apps, (), ac)
 
     assert len(ac[0].tokens) == 2
 
@@ -107,7 +107,7 @@ def test_config_env_dataclass(apps, monkeypatch):
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR_BAR_BUZZ_BUZZ", "100")
     monkeypatch.setenv("CYCLOPTS_TEST_APP_BAR_BAR_FIZZ_FIZZ", "200")
 
-    Env("CYCLOPTS_TEST_APP_", command=False)(apps, (), ac)
+    Env(prefix="CYCLOPTS_TEST_APP_", command=False)(apps, (), ac)
 
     assert len(ac) == 3
     assert len(ac[1].tokens) == 1
@@ -132,6 +132,6 @@ def test_config_env_kwargs(app, assert_parse_args, monkeypatch):
         pass
 
     monkeypatch.setenv("CYCLOPTS_TEST_APP_TWO_WORDS", "test value")
-    app.config = Env("CYCLOPTS_TEST_APP_")
+    app.config = Env(prefix="CYCLOPTS_TEST_APP_")
 
     assert_parse_args(default, "a_value", a="a_value", two_words="test value")

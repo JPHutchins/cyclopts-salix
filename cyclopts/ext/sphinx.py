@@ -1,3 +1,4 @@
+from salix import Struct
 """Sphinx extension for automatic Cyclopts CLI documentation."""
 
 from typing import TYPE_CHECKING, Any
@@ -18,8 +19,7 @@ from sphinx.util.docutils import SphinxDirective
 logger = logging.getLogger(__name__)
 
 
-@attrs.define(kw_only=True)
-class DirectiveOptions:
+class DirectiveOptions(Struct, frozen=True):
     """Configuration for the Cyclopts directive."""
 
     heading_level: int = 2
@@ -41,28 +41,28 @@ class DirectiveOptions:
     def from_dict(cls, options: dict) -> "DirectiveOptions":
         """Create options from directive options dictionary."""
         kwargs = {}
-        for field in attrs.fields(cls):
+        for name, annotation in zip(cls.__struct_fields__, cls.__struct_annotations__):
             # Convert underscore to dash for looking up in options
-            option_name = field.name.replace("_", "-")
+            option_name = name.replace("_", "-")
 
-            if field.type is bool:
+            if annotation is bool:
                 # For boolean fields using directives.flag, presence means True
                 # The value is None when present, absent from dict when not specified
                 if option_name in options:
-                    kwargs[field.name] = True
+                    kwargs[name] = True
                 # Use default value if not specified
             elif option_name in options:
                 value = options[option_name]
                 # Handle comma-separated lists for commands and exclude-commands
-                if field.name in ("commands", "exclude_commands"):
+                if name in ("commands", "exclude_commands"):
                     # Parse comma-separated list and strip whitespace
                     if value:
-                        kwargs[field.name] = [cmd.strip() for cmd in value.split(",") if cmd.strip()]
+                        kwargs[name] = [cmd.strip() for cmd in value.split(",") if cmd.strip()]
                     else:
                         # Empty string means empty list
-                        kwargs[field.name] = []
+                        kwargs[name] = []
                 else:
-                    kwargs[field.name] = value
+                    kwargs[name] = value
             # If not specified, the dataclass default will be used
 
         return cls(**kwargs)
@@ -79,13 +79,13 @@ class DirectiveOptions:
         }
 
         option_spec = {}
-        for field in attrs.fields(DirectiveOptions):
-            option_name = field.name.replace("_", "-")
+        for name, annotation in zip(DirectiveOptions.__struct_fields__, DirectiveOptions.__struct_annotations__):
+            option_name = name.replace("_", "-")
             # Handle List[str] fields (commands, exclude-commands)
-            if field.name in ("commands", "exclude_commands"):
+            if name in ("commands", "exclude_commands"):
                 validator = directives.unchanged  # Will be parsed as comma-separated in from_dict
             else:
-                validator = type_mapping.get(field.type, directives.unchanged)
+                validator = type_mapping.get(annotation, directives.unchanged)
             option_spec[option_name] = validator
 
         return option_spec

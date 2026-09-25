@@ -1,11 +1,11 @@
+from salix import Struct
 from typing import Any
 
 from cyclopts.utils import frozen
 from cyclopts.validators._utils import iter_container_elements
 
 
-@frozen(kw_only=True)
-class Number:
+class Number(Struct, frozen=True):
     """Limit input number to a value range.
 
     If the annotated parameter is a container (``list``, ``tuple``, ``set``,

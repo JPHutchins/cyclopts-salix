@@ -11,7 +11,7 @@ from typing import (  # noqa: F401
 )
 
 import attrs
-from attrs import field
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -49,18 +49,17 @@ def _replace_annotated_type(src_type, dst_type):
     return Annotated[(dst_type,) + get_args(src_type)[1:]]  # pyright: ignore
 
 
-@attrs.define
-class FieldInfo:
+class FieldInfo(Struct, frozen=True):
     """Extension of :class:`inspect.Parameter`."""
 
     names: tuple[str, ...] = ()
     kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
 
-    required: bool = field(kw_only=True, default=False)
-    default: Any = field(default=inspect.Parameter.empty, kw_only=True)
-    annotation: Any = field(default=inspect.Parameter.empty, kw_only=True)
+    required: bool = False
+    default: Any = inspect.Parameter.empty
+    annotation: Any = inspect.Parameter.empty
 
-    help: str | None = field(default=None, kw_only=True)
+    help: str | None = None
     """Can be populated by additional metadata from another library; e.g. ``pydantic.FieldInfo.description``."""
 
     ###################
@@ -127,7 +126,9 @@ class FieldInfo:
         return self.kind in (KEYWORD_ONLY, VAR_KEYWORD)
 
     def evolve(self, **kwargs):
-        return attrs.evolve(self, **kwargs)
+        values = {name: getattr(self, name) for name in self.__struct_fields__}
+        values.update(kwargs)
+        return type(self)(**values)
 
 
 def _typed_dict_field_infos(typeddict) -> dict[str, FieldInfo]:
@@ -283,11 +284,52 @@ def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
     return out
 
 
+def _struct_field_infos(hint) -> dict[str, FieldInfo]:
+    import dataclasses
+
+    names = hint.__struct_fields__  # type: ignore[attr-defined]
+    annotations = hint.__struct_annotations__  # type: ignore[attr-defined]
+    defaults = hint.__struct_defaults__  # type: ignore[attr-defined]
+    required_count = len(names) - len(defaults)
+    fields = []
+    for position, name in enumerate(names):
+        field = dataclasses.Field(
+            default=(
+                dataclasses.MISSING
+                if position < required_count
+                else defaults[position - required_count]
+            ),
+            default_factory=dataclasses.MISSING,
+            init=True,
+            repr=True,
+            hash=None,
+            compare=True,
+            metadata={},
+            kw_only=False,
+            **(
+                {"doc": None}
+                if "doc" in dataclasses.Field.__init__.__code__.co_varnames
+                else {}
+            ),
+        )
+        field.name = name
+        field.type = annotations[position]
+        fields.append(field)
+    return _dataclass_field_infos_from_fields(hint, fields)
+
+
 def _dataclass_field_infos(hint) -> dict[str, FieldInfo]:
     import dataclasses
 
+    if hasattr(hint, "__struct_fields__"):
+        return _struct_field_infos(hint)
+    return _dataclass_field_infos_from_fields(hint, dataclasses.fields(hint))
+
+
+def _dataclass_field_infos_from_fields(hint, fields) -> dict[str, FieldInfo]:
+    import dataclasses
+
     out = {}
-    fields = dataclasses.fields(hint)
     type_hints = get_type_hints(hint, include_extras=True)  # resolves stringified type hints
     for f in fields:
         if f.default_factory is not dataclasses.MISSING:

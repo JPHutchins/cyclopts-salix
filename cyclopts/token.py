@@ -1,20 +1,19 @@
 from typing import Any
 
-from attrs import evolve, field
+from salix import Struct
 
-from cyclopts.utils import UNSET, frozen
+from cyclopts.utils import UNSET
 
 
-@frozen(kw_only=True)
-class Token:
+class Token(Struct, frozen=True):
     """Tracks how a user supplied a value to the application."""
 
     keyword: str | None = None
     value: str = ""
     source: str = ""
-    index: int = field(default=0, kw_only=True)
-    keys: tuple[str, ...] = field(default=(), kw_only=True)
-    implicit_value: Any = field(default=UNSET, kw_only=True)
+    index: int = 0
+    keys: tuple[str, ...] = ()
+    implicit_value: Any = UNSET
 
     @property
     def address(self) -> tuple[tuple[str, ...], int]:
@@ -22,5 +21,6 @@ class Token:
         return (self.keys, self.index)
 
     def evolve(self, **kwargs) -> "Token":
-        # TODO: replace return-hint with Self cp311
-        return evolve(self, **kwargs)
+        values = {name: getattr(self, name) for name in self.__struct_fields__}
+        values.update(kwargs)
+        return type(self)(**values)

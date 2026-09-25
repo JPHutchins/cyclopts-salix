@@ -304,8 +304,10 @@ class Argument:
                 if existing_field_info == field_info:
                     pass
                 elif discriminator and discriminator in field_info.names and discriminator in existing_field_info.names:
-                    existing_field_info.annotation = Literal[existing_field_info.annotation, field_info.annotation]
-                    existing_field_info.default = FieldInfo.empty
+                    self._lookup[key] = existing_field_info.evolve(
+                        annotation=Literal[existing_field_info.annotation, field_info.annotation],
+                        default=FieldInfo.empty,
+                    )
                 else:
                     raise NotImplementedError
             else:

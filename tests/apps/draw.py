@@ -20,8 +20,8 @@ toml_path.write_text(toml_data)
 app = App(
     help="Demo drawing app.",
     config=(
-        cyclopts.config.Toml(toml_path, root_keys=("tool", "draw")),
-        cyclopts.config.Toml(toml_path, root_keys=("tool", "draw"), use_commands_as_keys=False),
+        cyclopts.config.Toml(path=toml_path, root_keys=("tool", "draw")),
+        cyclopts.config.Toml(path=toml_path, root_keys=("tool", "draw"), use_commands_as_keys=False),
     ),
 )
 

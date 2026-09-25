@@ -12,6 +12,7 @@ from typing import (
 )
 
 from attrs import define, evolve, field
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -74,8 +75,7 @@ def _description_converter(value: Any | None) -> Any:
     return value
 
 
-@frozen(kw_only=True)
-class HelpEntry:
+class HelpEntry(Struct, frozen=True):
     """Container for help table entry data."""
 
     positive_names: tuple[str, ...] = ()
@@ -130,11 +130,12 @@ class HelpEntry:
     """Default value for this parameter to display. None means no default to show."""
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        values = {name: getattr(self, name) for name in self.__struct_fields__}
+        values.update(kwargs)
+        return type(self)(**values)
 
 
-@define
-class HelpPanel:
+class HelpPanel(Struct, frozen=False):
     """Data container for help panel information."""
 
     format: Literal["command", "parameter"]
@@ -143,20 +144,22 @@ class HelpPanel:
     title: "RenderableType"
     """The title text displayed at the top of the help panel."""
 
-    description: Any = field(
-        default=None,
-        converter=_description_converter,
-    )
+    description: Any = None
     """Optional description text displayed below the title.
 
     Typically a :class:`str` or a :obj:`~rich.console.RenderableType`
     """
 
-    entries: list[HelpEntry] = field(factory=list)
+    entries: list[HelpEntry] = []
     """List of help entries to display (in order) in the panel."""
 
+    def __post_init__(self) -> None:
+        self.description = _description_converter(self.description)
+
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        values = {name: getattr(self, name) for name in self.__struct_fields__}
+        values.update(kwargs)
+        return type(self)(**values)
 
     def _remove_duplicates(self):
         seen, out = set(), []
@@ -460,7 +463,9 @@ def _expand_structured_dict_for_help(
         base = _make_help_entry(argument, format)
         if outer_long_names:
             suffixed_names = tuple(f"{n}.{{NAME}}" for n in base.positive_names)
-            yield evolve(base, positive_names=suffixed_names)
+            values = {name: getattr(base, name) for name in base.__struct_fields__}
+            values["positive_names"] = suffixed_names
+            yield type(base)(**values)
         else:
             yield base
         return

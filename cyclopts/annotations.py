@@ -68,7 +68,7 @@ def is_pydantic_secret(hint) -> bool:
 
 
 def is_dataclass(hint) -> bool:
-    return hasattr(hint, "__dataclass_fields__")
+    return hasattr(hint, "__dataclass_fields__") or hasattr(hint, "__struct_fields__")
 
 
 def is_namedtuple(hint) -> bool:
