@@ -7,6 +7,7 @@ from types import UnionType
 from typing import Annotated, Any, Union, get_args, get_origin
 
 import attrs
+import salix
 
 from cyclopts.utils import is_class_and_subclass
 
@@ -67,8 +68,12 @@ def is_pydantic_secret(hint) -> bool:
     )
 
 
+def is_salix_struct(hint) -> bool:
+    return is_class_and_subclass(hint, salix.Struct)
+
+
 def is_dataclass(hint) -> bool:
-    return hasattr(hint, "__dataclass_fields__") or hasattr(hint, "__struct_fields__")
+    return hasattr(hint, "__dataclass_fields__") or is_salix_struct(hint)
 
 
 def is_namedtuple(hint) -> bool:

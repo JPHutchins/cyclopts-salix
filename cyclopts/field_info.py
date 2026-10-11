@@ -11,6 +11,7 @@ from typing import (  # noqa: F401
 )
 
 import attrs
+import salix
 from salix import Struct
 
 if sys.version_info >= (3, 11):
@@ -29,6 +30,7 @@ from cyclopts.annotations import (
     is_namedtuple,
     is_pydantic,
     is_pydantic_secret,
+    is_salix_struct,
     is_typeddict,
     resolve,
     resolve_annotated,
@@ -287,41 +289,22 @@ def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
 def _struct_field_infos(hint) -> dict[str, FieldInfo]:
     import dataclasses
 
-    names = hint.__struct_fields__  # type: ignore[attr-defined]
-    annotations = hint.__struct_annotations__  # type: ignore[attr-defined]
-    defaults = hint.__struct_defaults__  # type: ignore[attr-defined]
-    required_count = len(names) - len(defaults)
-    fields = []
-    for position, name in enumerate(names):
-        field = dataclasses.Field(
-            default=(
-                dataclasses.MISSING
-                if position < required_count
-                else defaults[position - required_count]
-            ),
-            default_factory=dataclasses.MISSING,
-            init=True,
-            repr=True,
-            hash=None,
-            compare=True,
-            metadata={},
-            kw_only=False,
-            **(
-                {"doc": None}
-                if "doc" in dataclasses.Field.__init__.__code__.co_varnames
-                else {}
-            ),
+    def to_dataclass_field(field: salix.Field) -> dataclasses.Field:
+        out = dataclasses.field(
+            default=dataclasses.MISSING if field.default is salix.MISSING else field.default,
+            kw_only=field.kw_only,
         )
-        field.name = name
-        field.type = annotations[position]
-        fields.append(field)
-    return _dataclass_field_infos_from_fields(hint, fields)
+        out.name = field.name
+        out.type = field.type
+        return out
+
+    return _dataclass_field_infos_from_fields(hint, [to_dataclass_field(field) for field in salix.fields(hint)])
 
 
 def _dataclass_field_infos(hint) -> dict[str, FieldInfo]:
     import dataclasses
 
-    if hasattr(hint, "__struct_fields__"):
+    if is_salix_struct(hint):
         return _struct_field_infos(hint)
     return _dataclass_field_infos_from_fields(hint, dataclasses.fields(hint))
 
