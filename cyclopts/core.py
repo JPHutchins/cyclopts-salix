@@ -23,7 +23,7 @@ from typing import (
     overload,
 )
 
-from attrs import Factory, define, field
+from salix import Struct, fields
 
 from cyclopts.annotations import resolve_annotated
 from cyclopts.app_stack import AppStack
@@ -89,7 +89,7 @@ def _result_action_converter(
 ) -> tuple["ResultActionSingle", ...] | None:
     """Convert result_action value, ensuring non-empty sequences.
 
-    Intended to be used in an ``attrs.Field`` for result_action.
+    Intended to be used as the result_action field converter.
     Raises ValueError if an empty iterable is provided.
     """
     if value is None:
@@ -308,35 +308,45 @@ def _app_group_tuple_converter(value: Group | str | Iterable[Group | str] | None
     return cast(tuple[Group | str, ...], to_tuple_converter(value))
 
 
+def _identity(value: V) -> V:
+    return value
+
+
+_APP_PRIVATE_NAMES = frozenset(
+    {
+        "_commands",
+        "_flattened_subapps",
+        "_meta",
+        "_meta_parent",
+        "_instantiating_module_name",
+        "_instantiating_module_cache",
+        "_fallback_console",
+        "_fallback_error_console",
+        "app_stack",
+    }
+)
+
+
 def _app_validator_converter(
     value: Callable[..., Any] | Iterable[Callable[..., Any]] | None,
 ) -> list[Callable[..., Any]]:
     return to_list_converter(value)  # type: ignore[return-value]
 
 
-@define
-class App:
+class App(Struct, frozen=False, eq=False):
     # This can ONLY ever be Tuple[str, ...] due to converter.
     # The other types is to make mypy happy for Cyclopts users.
-    _name: None | str | tuple[str, ...] = field(default=None, alias="name", converter=_app_optional_name_converter)
+    _name: None | str | tuple[str, ...] = None
 
-    _help: str | None = field(default=None, alias="help")
+    _help: str | None = None
 
-    usage: str | None = field(default=None)
+    usage: str | None = None
 
     # Everything below must be kw_only
 
-    alias: None | str | tuple[str, ...] = field(
-        default=None,
-        converter=_app_str_tuple_converter,
-        kw_only=True,
-    )
+    alias: None | str | tuple[str, ...] = None
 
-    synonym: None | str | tuple[str, ...] = field(
-        default=None,
-        converter=_app_str_tuple_converter,
-        kw_only=True,
-    )
+    synonym: None | str | tuple[str, ...] = None
     """Alternate command names that are NOT runnable but trigger a "Did you mean..." suggestion.
 
     Unlike :attr:`alias`, synonyms do not register the command under additional names. They exist
@@ -344,151 +354,98 @@ class App:
     (e.g., ``remove`` when the command is ``uninstall``).
     """
 
-    default_command: Callable[..., Any] | None = field(default=None, converter=_validate_default_command, kw_only=True)
-    default_parameter: Parameter | None = field(default=None, kw_only=True)
+    default_command: Callable[..., Any] | None = None
+    default_parameter: Parameter | None = None
 
     # This can ONLY ever be None or Tuple[Callable, ...]
     _config: (
         None
         | Callable[["App", tuple[str, ...], ArgumentCollection], Any]
         | Iterable[Callable[["App", tuple[str, ...], ArgumentCollection], Any]]
-    ) = field(
-        default=None,
-        alias="config",
-        converter=_app_config_converter,
-        kw_only=True,
-    )
+    ) = None
 
-    version: None | str | Callable[..., str] | Callable[..., Coroutine[Any, Any, str]] = field(
-        default=None, kw_only=True
-    )
+    version: None | str | Callable[..., str] | Callable[..., Coroutine[Any, Any, str]] = None
     # This can ONLY ever be a Tuple[str, ...]
-    _version_flags: str | Iterable[str] = field(
-        default=["--version"],
-        converter=_app_str_tuple_converter,
-        alias="version_flags",
-        kw_only=True,
-    )
+    _version_flags: str | Iterable[str] = ("--version",)
 
-    show: bool = field(default=True, kw_only=True)
+    show: bool = True
 
-    _console: Optional["Console"] = field(default=None, kw_only=True, alias="console")
+    _console: Optional["Console"] = None
 
-    _error_console: Optional["Console"] = field(default=None, kw_only=True, alias="error_console")
+    _error_console: Optional["Console"] = None
 
     # This can ONLY ever be a Tuple[str, ...]
-    _help_flags: str | Iterable[str] = field(
-        default=["--help", "-h"],
-        converter=_app_str_tuple_converter,
-        alias="help_flags",
-        kw_only=True,
-    )
-    help_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = field(
-        default=None, kw_only=True
-    )
-    help_on_error: bool | None = field(default=None, kw_only=True)
-    help_prologue: str | None = field(default=None, kw_only=True)
-    help_epilogue: str | None = field(default=None, kw_only=True)
+    _help_flags: str | Iterable[str] = ("--help", "-h")
+    help_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = None
+    help_on_error: bool | None = None
+    help_prologue: str | None = None
+    help_epilogue: str | None = None
 
-    version_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = field(
-        default=None, kw_only=True
-    )
+    version_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = None
 
     # This can ONLY ever be Tuple[Union[Group, str], ...] due to converter.
     # The other types is to make mypy happy for Cyclopts users.
-    group: Group | str | tuple[Group | str, ...] = field(
-        default=None, converter=_app_group_tuple_converter, kw_only=True
-    )
+    group: Group | str | tuple[Group | str, ...] = None  # type: ignore[assignment]
 
     # This can ONLY ever be a Group or None
-    _group_arguments: Group | str | None = field(
-        alias="group_arguments",
-        default=None,
-        converter=_group_converter,
-        kw_only=True,
-    )
+    _group_arguments: Group | str | None = None
     # This can ONLY ever be a Group or None
-    _group_parameters: Group | str | None = field(
-        alias="group_parameters",
-        default=None,
-        converter=_group_converter,
-        kw_only=True,
-    )
+    _group_parameters: Group | str | None = None
     # This can ONLY ever be a Group or None
-    _group_commands: Group | str | None = field(
-        alias="group_commands",
-        default=None,
-        converter=_group_converter,
-        kw_only=True,
-    )
+    _group_commands: Group | str | None = None
 
-    validator: list[Callable[..., Any]] = field(default=None, converter=_app_validator_converter, kw_only=True)
+    validator: list[Callable[..., Any]] = None  # type: ignore[assignment]
 
-    _name_transform: Callable[[str], str] | None = field(
-        default=None,
-        alias="name_transform",
-        kw_only=True,
-    )
+    _name_transform: Callable[[str], str] | None = None
 
-    _sort_key: Any = field(
-        default=None,
-        alias="sort_key",
-        converter=sort_key_converter,
-        kw_only=True,
-    )
+    _sort_key: Any = None
 
-    end_of_options_delimiter: str | None = field(default=None, kw_only=True)
+    end_of_options_delimiter: str | None = None
 
-    print_error: bool | None = field(default=None, kw_only=True)
+    print_error: bool | None = None
 
-    exit_on_error: bool | None = field(default=None, kw_only=True)
+    exit_on_error: bool | None = None
 
-    verbose: bool | None = field(default=None, kw_only=True)
+    verbose: bool | None = None
 
-    suppress_keyboard_interrupt: bool = field(default=True, kw_only=True)
+    suppress_keyboard_interrupt: bool = True
 
-    backend: Literal["asyncio", "trio"] | None = field(default=None, kw_only=True)
+    backend: Literal["asyncio", "trio"] | None = None
 
-    help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = field(
-        default=None, converter=help_formatter_converter, kw_only=True
-    )
+    help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = None
 
-    error_formatter: Callable[["CycloptsError"], Any] | None = field(default=None, kw_only=True)
+    error_formatter: Callable[["CycloptsError"], Any] | None = None
 
     # This can ONLY ever be None or Tuple[ResultActionSingle, ...] due to converter.
     # The other types is to make type checkers happy for Cyclopts users.
-    result_action: ResultAction | ResultActionSingle | None = field(
-        default=None,
-        converter=_result_action_converter,
-        kw_only=True,
-    )
+    result_action: ResultAction | ResultActionSingle | None = None
 
     ######################
     # Private Attributes #
     ######################
-    # `init=False` tells attrs not to include it in the generated __init__
+    # These are not constructor arguments; ``__init__`` populates them.
 
     # Maps CLI-name of a command to either an App or a CommandSpec (lazy).
-    _commands: dict[str, "App | CommandSpec"] = field(init=False, factory=dict)
+    _commands: dict[str, "App | CommandSpec"] = {}
 
     # Subapps whose commands should be flattened into this app (registered via name="*")
-    _flattened_subapps: list["App"] = field(init=False, factory=list)
+    _flattened_subapps: list["App"] = []
 
-    _meta: Optional["App"] = field(init=False, default=None)
-    _meta_parent: Optional["App"] = field(init=False, default=None)
+    _meta: Optional["App"] = None
+    _meta_parent: Optional["App"] = None
 
-    _instantiating_module_name: str | None = field(init=False, default=None, repr=False)
+    _instantiating_module_name: str | None = None
     """Module name (e.g., '__main__' or 'mypackage.cli') captured during App initialization.
 
     Captured from the calling frame's __name__ for lazy module resolution and automatic
-    version detection. Populated in __attrs_post_init__ via frame introspection.
+    version detection. Populated in __init__ via frame introspection.
     Used by the _instantiating_module property to lazily resolve the actual module object.
 
     This optimization avoids the expensive inspect.getmodule() call at init time,
     deferring it until the module is actually needed (typically for --version).
     """
 
-    _instantiating_module_cache: ModuleType | None | type[UNSET] = field(init=False, default=UNSET, repr=False)
+    _instantiating_module_cache: ModuleType | None | type[UNSET] = UNSET
     """Cached module object resolved from _instantiating_module_name.
 
     Starts as UNSET sentinel value. On first access via the _instantiating_module property,
@@ -498,28 +455,114 @@ class App:
     Set to None if module name was not captured or module is not in sys.modules.
     """
 
-    _fallback_console: Optional["Console"] = field(init=False, default=None)
+    _fallback_console: Optional["Console"] = None
 
-    _fallback_error_console: Optional["Console"] = field(init=False, default=None)
+    _fallback_error_console: Optional["Console"] = None
 
-    app_stack: AppStack = field(init=False, default=Factory(AppStack, takes_self=True))
+    app_stack: AppStack = None  # type: ignore[assignment]
 
-    def __attrs_post_init__(self):
+    def __init__(
+        self,
+        name: None | str | Iterable[str] = None,
+        help: str | None = None,
+        usage: str | None = None,
+        *,
+        alias: None | str | Iterable[str] = None,
+        synonym: None | str | Iterable[str] = None,
+        default_command: Callable[..., Any] | None = None,
+        default_parameter: Parameter | None = None,
+        config: (
+            None
+            | Callable[["App", tuple[str, ...], ArgumentCollection], Any]
+            | Iterable[Callable[["App", tuple[str, ...], ArgumentCollection], Any]]
+        ) = None,
+        version: None | str | Callable[..., str] | Callable[..., Coroutine[Any, Any, str]] = None,
+        version_flags: str | Iterable[str] = ("--version",),
+        show: bool = True,
+        console: Optional["Console"] = None,
+        error_console: Optional["Console"] = None,
+        help_flags: str | Iterable[str] = ("--help", "-h"),
+        help_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = None,
+        help_on_error: bool | None = None,
+        help_prologue: str | None = None,
+        help_epilogue: str | None = None,
+        version_format: Literal["markdown", "md", "plaintext", "restructuredtext", "rst", "rich"] | None = None,
+        group: Group | str | Iterable[Group | str] | None = None,
+        group_arguments: Group | str | None = None,
+        group_parameters: Group | str | None = None,
+        group_commands: Group | str | None = None,
+        validator: Callable[..., Any] | Iterable[Callable[..., Any]] | None = None,
+        name_transform: Callable[[str], str] | None = None,
+        sort_key: Any = None,
+        end_of_options_delimiter: str | None = None,
+        print_error: bool | None = None,
+        exit_on_error: bool | None = None,
+        verbose: bool | None = None,
+        suppress_keyboard_interrupt: bool = True,
+        backend: Literal["asyncio", "trio"] | None = None,
+        help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = None,
+        error_formatter: Callable[["CycloptsError"], Any] | None = None,
+        result_action: ResultAction | ResultActionSingle | None = None,
+    ) -> None:
+        self._name = name  # type: ignore[assignment]
+        self._help = help
+        self.usage = usage
+        self.alias = alias  # type: ignore[assignment]
+        self.synonym = synonym  # type: ignore[assignment]
+        self.default_command = default_command
+        self.default_parameter = default_parameter
+        self._config = config  # type: ignore[assignment]
+        self.version = version
+        self._version_flags = version_flags
+        self.show = show
+        self._console = console
+        self._error_console = error_console
+        self._help_flags = help_flags
+        self.help_format = help_format
+        self.help_on_error = help_on_error
+        self.help_prologue = help_prologue
+        self.help_epilogue = help_epilogue
+        self.version_format = version_format
+        self.group = group  # type: ignore[assignment]
+        self._group_arguments = group_arguments
+        self._group_parameters = group_parameters
+        self._group_commands = group_commands
+        self.validator = validator  # type: ignore[assignment]
+        self._name_transform = name_transform
+        self._sort_key = sort_key
+        self.end_of_options_delimiter = end_of_options_delimiter
+        self.print_error = print_error
+        self.exit_on_error = exit_on_error
+        self.verbose = verbose
+        self.suppress_keyboard_interrupt = suppress_keyboard_interrupt
+        self.backend = backend
+        self.help_formatter = help_formatter
+        self.error_formatter = error_formatter
+        self.result_action = result_action  # type: ignore[assignment]
+        self._commands = {}
+        self._flattened_subapps = []
+        self._meta = None
+        self._meta_parent = None
+        self._instantiating_module_cache = UNSET
+        self._fallback_console = None
+        self._fallback_error_console = None
+        self.app_stack = AppStack(self)
+
         # Trigger the setters
         self.help_flags = self._help_flags
         self.version_flags = self._version_flags
 
         # Capture the module name from the instantiating frame.
         # This is cheap (just dict lookup) compared to inspect.getmodule().
-        # inspect.stack()[2] is needed in attrs class because the call stack is deeper:
-        # [0]: __attrs_post_init__
-        # [1]: the attrs-generated __init__
-        # [2]: the caller who created the instance
+        # sys._getframe(1) is the caller who created the instance.
         try:
-            frame = sys._getframe(2)
+            frame = sys._getframe(1)
             self._instantiating_module_name = frame.f_globals.get("__name__")
         except (IndexError, AttributeError):
             self._instantiating_module_name = None
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        object.__setattr__(self, name, _APP_NORMALIZERS.get(name, _identity)(value))
 
     ###########
     # Methods #
@@ -2786,16 +2829,42 @@ class App:
     def __repr__(self):
         """Only shows non-default values."""
         non_defaults = {}
-        for a in self.__attrs_attrs__:  # pyright: ignore[reportAttributeAccessIssue]
-            if not a.init:
-                continue
-            v = getattr(self, a.name)
+        for alias, name in _APP_ALIAS_TO_NAME.items():
+            v = getattr(self, name)
+            default = _APP_DEFAULTS[name]
             # Compare types first because of some weird attribute issues.
-            if type(v) != type(a.default) or v != a.default:  # noqa: E721
-                non_defaults[a.alias] = v
+            if type(v) != type(default) or v != default:  # noqa: E721
+                non_defaults[alias] = v
 
         signature = ", ".join(f"{k}={v!r}" for k, v in non_defaults.items())
         return f"{type(self).__name__}({signature})"
+
+
+_APP_ALIAS_TO_NAME = {
+    field.name.removeprefix("_"): field.name
+    for field in fields(App)
+    if field.name not in _APP_PRIVATE_NAMES
+}
+
+_APP_DEFAULTS = {field.name: field.default for field in fields(App)}
+
+_APP_NORMALIZERS: dict[str, Callable[[Any], Any]] = {
+    "_name": _app_optional_name_converter,
+    "alias": _app_str_tuple_converter,
+    "synonym": _app_str_tuple_converter,
+    "default_command": _validate_default_command,
+    "_config": _app_config_converter,
+    "_version_flags": _app_str_tuple_converter,
+    "_help_flags": _app_str_tuple_converter,
+    "group": _app_group_tuple_converter,
+    "_group_arguments": _group_converter,
+    "_group_parameters": _group_converter,
+    "_group_commands": _group_converter,
+    "validator": _app_validator_converter,
+    "_sort_key": sort_key_converter,
+    "help_formatter": help_formatter_converter,
+    "result_action": _result_action_converter,
+}
 
 
 def _get_help_flag_index(tokens, help_flags, end_of_options_delimiter) -> int | None:
