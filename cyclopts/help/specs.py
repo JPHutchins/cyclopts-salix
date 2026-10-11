@@ -11,7 +11,6 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import Self
 
-from cyclopts.utils import frozen
 
 if TYPE_CHECKING:
     from rich.box import Box

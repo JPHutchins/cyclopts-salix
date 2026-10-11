@@ -14,8 +14,7 @@ from typing import (  # noqa: UP035
     get_origin,
 )
 
-from attrs import define, field
-from salix import Struct
+from salix import Struct, fields, set_field
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -39,9 +38,7 @@ from cyclopts.field_info import FieldInfo, get_field_infos, signature_parameters
 from cyclopts.group import Group
 from cyclopts.utils import (
     default_name_transform,
-    frozen,
     optional_to_tuple_converter,
-    record_init,
     to_tuple_converter,
 )
 
@@ -79,10 +76,10 @@ _NEGATIVE_FLAG_TYPES = frozenset(
 )
 
 
-def _not_hyphen_validator(instance, attribute, values):
+def _not_hyphen_validator(alias, values):
     for value in values:
         if value is not None and value.startswith("-"):
-            raise ValueError(f'{attribute.alias} value must NOT start with "-".')
+            raise ValueError(f'{alias} value must NOT start with "-".')
 
 
 def _str_tuple_converter(value: str | Iterable[str] | None) -> tuple[str, ...]:
@@ -103,6 +100,10 @@ def _optional_str_tuple_converter(value: bool | str | Iterable[str] | None) -> t
     return optional_to_tuple_converter(value)  # type: ignore[return-value]
 
 
+def _identity(value: T) -> T:
+    return value
+
+
 def _default_if_none_true(value: bool | None) -> bool:
     return value if value is not None else True
 
@@ -117,7 +118,7 @@ def _short_alias_converter(
     return False if value is None else value
 
 
-def _short_alias_validator(instance, attribute, value):
+def _short_alias_validator(value):
     # A str is also an Iterable[str], so an explicit "-z" would silently expand into
     # individual letters. Reject it so the developer reaches for alias/name instead.
     if isinstance(value, str):
@@ -128,14 +129,21 @@ def _short_alias_validator(instance, attribute, value):
         )
 
 
-def _negative_converter(default: tuple[str, ...]):
+def _negative_converter(alias: str, default: tuple[str, ...]):
     def converter(value: str | Iterable[str] | None) -> tuple[str, ...]:
-        if value is None:
-            return default
-        else:
-            return to_tuple_converter(value)
+        converted = default if value is None else to_tuple_converter(value)
+        _not_hyphen_validator(alias, converted)
+        return converted
 
     return converter
+
+
+def _short_alias_normalizer(
+    value: bool | Callable[[FieldInfo, frozenset[str]], str | Iterable[str] | None] | None,
+) -> bool | Callable[[FieldInfo, frozenset[str]], str | Iterable[str] | None]:
+    converted = _short_alias_converter(value)
+    _short_alias_validator(converted)
+    return converted
 
 
 def _consume_multiple_converter(
@@ -187,9 +195,7 @@ def _parse_converter(value: bool | re.Pattern[str] | str | None) -> bool | re.Pa
     return value
 
 
-@record_init("_provided_args")
-@frozen
-class Parameter:
+class Parameter(Struct, frozen=True):
     """Cyclopts configuration for individual function parameters with :obj:`~typing.Annotated`.
 
     Example usage:
@@ -218,186 +224,105 @@ class Parameter:
         100
     """
 
-    # All attribute docstrings has been moved to ``docs/api.rst`` for greater control with attrs.
+    # All attribute docstrings has been moved to ``docs/api.rst`` for greater control.
 
     # This can ONLY ever be a Tuple[str, ...]
     # Usually starts with "--" or "-"
-    name: None | str | Iterable[str] = field(
-        default=None,
-        converter=_str_tuple_converter,
-    )
+    name: None | str | Iterable[str] = None
 
     # Accepts regular converters (type, tokens) -> Any, bound methods (tokens) -> Any, or string references
-    converter: Callable[..., Any] | str | None = field(
-        default=None,
-        kw_only=True,
-    )
+    converter: Callable[..., Any] | str | None = None
 
     # Accepts regular validators (type, value) -> None, bound methods (value) -> None,
     # string references, or an iterable mixing the three. Normalized to a tuple.
-    validator: None | Callable[..., Any] | str | Iterable[Callable[..., Any] | str] = field(
-        default=(),
-        converter=_validator_tuple_converter,
-        kw_only=True,
-    )
+    validator: None | Callable[..., Any] | str | Iterable[Callable[..., Any] | str] = ()
 
     # This can ONLY ever be a Tuple[str, ...]
-    alias: None | str | Iterable[str] = field(
-        default=None,
-        converter=_str_tuple_converter,
-        kw_only=True,
-    )
+    alias: None | str | Iterable[str] = None
 
     # This can ONLY ever be ``None`` or ``Tuple[str, ...]``
-    negative: None | str | Iterable[str] = field(
-        default=None,
-        converter=_optional_str_tuple_converter,
-        kw_only=True,
-    )
+    negative: None | str | Iterable[str] = None
 
     # This can ONLY ever be a Tuple[str, ...]
-    negative_alias: None | str | Iterable[str] = field(
-        default=None,
-        converter=_str_tuple_converter,
-        kw_only=True,
-    )
+    negative_alias: None | str | Iterable[str] = None
 
     # This can ONLY ever be a Tuple[Union[Group, str], ...]
-    group: None | Group | str | Iterable[Group | str] = field(
-        default=None,
-        converter=_group_tuple_converter,
-        kw_only=True,
-        hash=False,
-    )
+    group: None | Group | str | Iterable[Group | str] = None
 
-    parse: bool | re.Pattern | None = field(
-        default=None,
-        converter=_parse_converter,
-        kw_only=True,
-    )
+    parse: bool | re.Pattern | None = None
 
-    _show: bool | None = field(
-        default=None,
-        alias="show",
-        kw_only=True,
-    )
+    _show: bool | None = None
 
-    show_default: None | bool | str | Callable[[Any], Any] = field(
-        default=None,
-        kw_only=True,
-    )
+    show_default: None | bool | str | Callable[[Any], Any] = None
 
-    show_choices: bool = field(
-        default=None,
-        converter=_default_if_none_true,
-        kw_only=True,
-    )
+    show_choices: bool = None  # type: ignore[assignment]
 
-    help: str | None = field(default=None, kw_only=True)
+    help: str | None = None
 
-    show_env_var: bool = field(
-        default=None,
-        converter=_default_if_none_true,
-        kw_only=True,
-    )
+    show_env_var: bool = None  # type: ignore[assignment]
 
     # This can ONLY ever be a Tuple[str, ...]
-    env_var: None | str | Iterable[str] = field(
-        default=None,
-        converter=_str_tuple_converter,
-        kw_only=True,
-    )
+    env_var: None | str | Iterable[str] = None
 
-    env_var_split: Callable[..., Any] = field(
-        default=cyclopts._env_var.env_var_split,
-        kw_only=True,
-    )
+    env_var_split: Callable[..., Any] = cyclopts._env_var.env_var_split
 
     # This can ONLY ever be a Tuple[str, ...]
-    negative_bool: None | str | Iterable[str] = field(
-        default=None,
-        converter=_negative_converter(("no-",)),
-        validator=_not_hyphen_validator,
-        kw_only=True,
-    )
+    negative_bool: None | str | Iterable[str] = None
 
     # This can ONLY ever be a Tuple[str, ...]
-    negative_iterable: None | str | Iterable[str] = field(
-        default=None,
-        converter=_negative_converter(("empty-",)),
-        validator=_not_hyphen_validator,
-        kw_only=True,
-    )
+    negative_iterable: None | str | Iterable[str] = None
 
     # This can ONLY ever be a Tuple[str, ...]
-    negative_none: None | str | Iterable[str] = field(
-        default=None,
-        converter=_negative_converter(()),
-        validator=_not_hyphen_validator,
-        kw_only=True,
-    )
+    negative_none: None | str | Iterable[str] = None
 
-    required: bool | None = field(
-        default=None,
-        kw_only=True,
-    )
+    required: bool | None = None
 
-    allow_leading_hyphen: bool = field(
-        default=False,
-        kw_only=True,
-    )
+    allow_leading_hyphen: bool = False
 
-    requires_equals: bool = field(
-        default=False,
-        kw_only=True,
-    )
+    requires_equals: bool = False
 
-    _name_transform: Callable[[str], str] | None = field(
-        alias="name_transform",
-        default=None,
-        kw_only=True,
-    )
+    _name_transform: Callable[[str], str] | None = None
 
-    accepts_keys: bool | None = field(
-        default=None,
-        kw_only=True,
-    )
+    accepts_keys: bool | None = None
 
-    consume_multiple: None | bool | int | Sequence[int] | tuple[int, int | None] = field(
-        default=None,
-        converter=_consume_multiple_converter,
-        kw_only=True,
-    )
+    consume_multiple: None | bool | int | Sequence[int] | tuple[int, int | None] = None
 
-    json_dict: bool | None = field(default=None, kw_only=True)
+    json_dict: bool | None = None
 
-    json_list: bool | None = field(default=None, kw_only=True)
+    json_list: bool | None = None
 
-    count: bool = field(
-        default=None,
-        converter=_default_if_none_false,
-        kw_only=True,
-    )
+    count: bool = None  # type: ignore[assignment]
 
-    short_alias: bool | Callable[[FieldInfo, frozenset[str]], str | Iterable[str] | None] = field(
-        default=None,
-        converter=_short_alias_converter,
-        validator=_short_alias_validator,
-        kw_only=True,
-    )
+    short_alias: bool | Callable[[FieldInfo, frozenset[str]], str | Iterable[str] | None] = None  # type: ignore[assignment]
 
-    allow_repeating: bool | None = field(
-        default=None,
-        kw_only=True,
-    )
+    allow_repeating: bool | None = None
 
-    n_tokens: int | None = field(
-        default=None,
-        kw_only=True,
-    )
+    n_tokens: int | None = None
 
-    # Populated by the record_attrs_init_args decorator.
-    _provided_args: tuple[str, ...] = field(factory=tuple, init=False, eq=False)
+    # Populated by ``__init__`` with the aliases of the arguments the caller supplied.
+    _provided_args: tuple[str, ...] = ()
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if len(args) > 1:
+            raise TypeError(f"Parameter() takes at most 1 positional argument but {len(args)} were given")
+        if args and "name" in kwargs:
+            raise TypeError("Parameter() got multiple values for argument 'name'")
+        arguments = {**({"name": args[0]} if args else {}), **kwargs}
+        for alias in arguments:
+            if alias not in _PARAMETER_ALIAS_TO_NAME:
+                raise TypeError(f"Parameter() got an unexpected keyword argument {alias!r}")
+        for alias, name in _PARAMETER_ALIAS_TO_NAME.items():
+            normalize = _PARAMETER_NORMALIZERS.get(name, _identity)
+            set_field(self, name, normalize(arguments.get(alias, _PARAMETER_DEFAULTS[name])))
+        set_field(self, "_provided_args", tuple(arguments))
+
+    def __eq__(self, other: object) -> bool:
+        if type(other) is not type(self):
+            return NotImplemented
+        return all(getattr(self, name) == getattr(other, name) for name in _PARAMETER_ALIAS_TO_NAME.values())
+
+    def __hash__(self) -> int:
+        return hash(tuple(getattr(self, name) for name in _PARAMETER_ALIAS_TO_NAME.values() if name != "group"))
 
     @property
     def show(self) -> bool | None:
@@ -489,9 +414,9 @@ class Parameter:
         """Only shows non-default values."""
         content = ", ".join(
             [
-                f"{a.alias}={getattr(self, a.name)!r}"
-                for a in self.__attrs_attrs__  # pyright: ignore[reportAttributeAccessIssue]
-                if a.alias in self._provided_args
+                f"{alias}={getattr(self, name)!r}"
+                for alias, name in _PARAMETER_ALIAS_TO_NAME.items()
+                if alias in self._provided_args
             ]
         )
         return f"{type(self).__name__}({content})"
@@ -517,7 +442,7 @@ class Parameter:
 
         for parameter in filtered:
             for alias in parameter._provided_args:
-                kwargs[alias] = getattr(parameter, _parameter_alias_to_name[alias])
+                kwargs[alias] = getattr(parameter, _PARAMETER_ALIAS_TO_NAME[alias])
 
         return cls(**kwargs)
 
@@ -528,9 +453,7 @@ class Parameter:
         This is different than just :class:`Parameter` because the default
         values will be recorded and override all upstream parameter values.
         """
-        return cls(
-            **{a.alias: a.default for a in cls.__attrs_attrs__ if a.init}  # pyright: ignore[reportAttributeAccessIssue]
-        )
+        return cls(**{alias: _PARAMETER_DEFAULTS[name] for alias, name in _PARAMETER_ALIAS_TO_NAME.items()})
 
     @classmethod
     def from_annotation(cls, type_: Any, *default_parameters: "Parameter | None") -> tuple[Any, "Parameter"]:
@@ -563,10 +486,29 @@ class Parameter:
         return obj
 
 
-_parameter_alias_to_name = {
-    p.alias: p.name
-    for p in Parameter.__attrs_attrs__  # pyright: ignore[reportAttributeAccessIssue]
-    if p.init
+_PARAMETER_ALIAS_TO_NAME = {
+    field.name.removeprefix("_"): field.name for field in fields(Parameter) if field.name != "_provided_args"
+}
+
+_PARAMETER_DEFAULTS = {field.name: field.default for field in fields(Parameter)}
+
+_PARAMETER_NORMALIZERS: dict[str, Callable[[Any], Any]] = {
+    "name": _str_tuple_converter,
+    "validator": _validator_tuple_converter,
+    "alias": _str_tuple_converter,
+    "negative": _optional_str_tuple_converter,
+    "negative_alias": _str_tuple_converter,
+    "group": _group_tuple_converter,
+    "parse": _parse_converter,
+    "show_choices": _default_if_none_true,
+    "show_env_var": _default_if_none_true,
+    "env_var": _str_tuple_converter,
+    "negative_bool": _negative_converter("negative_bool", ("no-",)),
+    "negative_iterable": _negative_converter("negative_iterable", ("empty-",)),
+    "negative_none": _negative_converter("negative_none", ()),
+    "consume_multiple": _consume_multiple_converter,
+    "count": _default_if_none_false,
+    "short_alias": _short_alias_normalizer,
 }
 
 EMPTY_PARAMETER = Parameter()

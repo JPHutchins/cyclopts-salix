@@ -26,7 +26,7 @@ from cyclopts.field_info import get_field_infos
 from cyclopts.group import Group
 from cyclopts.help.inline_text import InlineText
 from cyclopts.help.silent import SILENT, SilentRich
-from cyclopts.utils import SortHelper, frozen, is_class_and_subclass, resolve_callables, slice_to_str
+from cyclopts.utils import SortHelper, is_class_and_subclass, resolve_callables, slice_to_str
 
 if TYPE_CHECKING:
     from rich.console import RenderableType

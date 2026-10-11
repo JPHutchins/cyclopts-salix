@@ -1395,7 +1395,7 @@ class App:
                 help=kwargs.pop("help", None),  # type: ignore[arg-type]
                 sort_key=kwargs.pop("sort_key", None),
                 group=kwargs.pop("group", None),  # type: ignore[arg-type]
-                show=kwargs.pop("show", None),  # type: ignore[arg-type]
+                _show=kwargs.pop("show", None),  # type: ignore[arg-type]
                 app_kwargs=kwargs,
             )
 

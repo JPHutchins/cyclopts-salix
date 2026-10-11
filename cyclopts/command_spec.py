@@ -4,15 +4,14 @@ import importlib
 from itertools import chain
 from typing import TYPE_CHECKING, Any
 
-from attrs import Factory, define, field
+from salix import Struct
 
 if TYPE_CHECKING:
     from cyclopts.core import App
     from cyclopts.group import Group
 
 
-@define
-class CommandSpec:
+class CommandSpec(Struct, frozen=False):
     """Specification for a command that will be lazily loaded on first access.
 
     This allows registering commands via import path strings (e.g., "myapp.commands:create")
@@ -42,11 +41,11 @@ class CommandSpec:
 
     import_path: str
     name: str | tuple[str, ...] | None = None
-    app_kwargs: dict[str, Any] = Factory(dict)
+    app_kwargs: dict[str, Any] = {}
     help: str | None = None
     sort_key: Any = None
     group: "Group | str | tuple[Group | str, ...] | None" = None
-    _show: bool | None = field(default=None, alias="show")
+    _show: bool | None = None
 
     @property
     def show(self) -> bool:
@@ -54,7 +53,7 @@ class CommandSpec:
             return True
         return self._show
 
-    _resolved: "App | None" = field(init=False, default=None, repr=False)
+    _resolved: "App | None" = None
 
     def resolve(self, parent_app: "App") -> "App":
         """Import and resolve the command on first access.

@@ -10,14 +10,14 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, get_args, get_origin
 
-from attrs import field
+from salix import Struct
 
 from cyclopts.annotations import ITERABLE_TYPES, is_annotated, is_union
 from cyclopts.argument import ArgumentCollection
 from cyclopts.exceptions import CycloptsError
 from cyclopts.field_info import VAR_KEYWORD
 from cyclopts.group_extractors import RegisteredCommand, groups_from_app
-from cyclopts.utils import frozen, is_class_and_subclass
+from cyclopts.utils import is_class_and_subclass
 
 if TYPE_CHECKING:
     from cyclopts import App
@@ -31,8 +31,7 @@ class CompletionAction(Enum):
     DIRECTORIES = "directories"
 
 
-@frozen
-class CompletionData:
+class CompletionData(Struct, frozen=True):
     """Completion data for a command path.
 
     Attributes
@@ -58,8 +57,8 @@ class CompletionData:
     arguments: "ArgumentCollection"
     commands: list[RegisteredCommand]
     help_format: str
-    launcher_arguments: "ArgumentCollection" = field(factory=ArgumentCollection)
-    own_arguments: "ArgumentCollection" = field(factory=ArgumentCollection)
+    launcher_arguments: "ArgumentCollection" = ArgumentCollection()
+    own_arguments: "ArgumentCollection" = ArgumentCollection()
 
 
 def extract_completion_data(app: "App") -> dict[tuple[str, ...], CompletionData]:

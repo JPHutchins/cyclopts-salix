@@ -2,9 +2,9 @@ import pathlib
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from attrs import field
+from salix import Struct, set_field
 
-from cyclopts.utils import frozen, to_tuple_converter
+from cyclopts.utils import to_tuple_converter
 from cyclopts.validators._utils import iter_container_elements
 
 
@@ -12,8 +12,7 @@ def ext_converter(value: str | Iterable[str] | None) -> tuple[str, ...]:
     return tuple(e.lower().lstrip(".") for e in to_tuple_converter(value))
 
 
-@frozen(kw_only=True)
-class Path:
+class Path(Struct, frozen=True):
     """Assertions on properties of :class:`pathlib.Path`.
 
     If the annotated parameter is a container (``list``, ``tuple``, ``set``,
@@ -83,13 +82,14 @@ class Path:
     """
 
     # Can only ever really be a tuple[str, ...]
-    ext: str | Sequence[str] = field(default=None, converter=ext_converter)
+    ext: str | Sequence[str] = None  # type: ignore[assignment]
     """
     Supplied path must have this extension (case insensitive).
     May or may not include the ".".
     """
 
-    def __attrs_post_init__(self):
+    def __post_init__(self) -> None:
+        set_field(self, "ext", ext_converter(self.ext))
         if self.exists and not self.file_okay and not self.dir_okay:
             raise ValueError("(exists=True, file_okay=False, dir_okay=False) is an invalid configuration.")
 

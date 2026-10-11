@@ -1,7 +1,6 @@
 from salix import Struct
 from typing import Any
 
-from cyclopts.utils import frozen
 from cyclopts.validators._utils import iter_container_elements
 
 

@@ -1,7 +1,6 @@
 import inspect
 from typing import Annotated, Optional
 
-import attrs
 import pytest
 
 from cyclopts import Parameter
@@ -142,17 +141,18 @@ def test_parameter_default():
     assert {"name", "converter", "validator"}.issubset(p2._provided_args)
 
 
-def test_parameter_attributes_are_kw_only():
-    """Test that all Parameter attributes except 'name' are keyword-only."""
-    attrs_fields = attrs.fields(Parameter)
+def test_parameter_only_name_is_positional():
+    """Every Parameter attribute except 'name' is keyword-only."""
+    assert Parameter("--foo").name == ("--foo",)
 
-    for field in attrs_fields:
-        if field.name == "name":
-            # The 'name' field should NOT be keyword-only
-            assert not field.kw_only, "Field 'name' should not be keyword-only"
-        elif field.init:  # Only check fields that are part of __init__
-            # All other init fields should be keyword-only
-            assert field.kw_only, f"Field '{field.name}' should be keyword-only"
+    with pytest.raises(TypeError):
+        Parameter("--foo", "--bar")
+
+    with pytest.raises(TypeError):
+        Parameter("--foo", name="--bar")
+
+    with pytest.raises(TypeError):
+        Parameter(not_an_attribute=True)
 
 
 def test_parameter_negative_alias_appends_to_generated():

@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any
 
 from cyclopts.command_spec import CommandSpec
 from cyclopts.group import Group
-from cyclopts.utils import frozen
 
 if TYPE_CHECKING:
     from cyclopts.core import App
