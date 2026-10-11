@@ -4,6 +4,7 @@ import re
 import sys
 from collections.abc import Callable, Iterable, Sequence
 from copy import deepcopy
+from operator import attrgetter
 from typing import (  # noqa: UP035
     Any,
     List,
@@ -311,18 +312,17 @@ class Parameter(Struct, frozen=True):
         for alias in arguments:
             if alias not in _PARAMETER_ALIAS_TO_NAME:
                 raise TypeError(f"Parameter() got an unexpected keyword argument {alias!r}")
-        for alias, name in _PARAMETER_ALIAS_TO_NAME.items():
-            normalize = _PARAMETER_NORMALIZERS.get(name, _identity)
-            set_field(self, name, normalize(arguments.get(alias, _PARAMETER_DEFAULTS[name])))
+        for alias, name, normalize, normalized_default in _PARAMETER_INITIALIZERS:
+            set_field(self, name, normalize(arguments[alias]) if alias in arguments else normalized_default)
         set_field(self, "_provided_args", tuple(arguments))
 
     def __eq__(self, other: object) -> bool:
         if type(other) is not type(self):
             return NotImplemented
-        return all(getattr(self, name) == getattr(other, name) for name in _PARAMETER_ALIAS_TO_NAME.values())
+        return _PARAMETER_FIELD_VALUES(self) == _PARAMETER_FIELD_VALUES(other)
 
     def __hash__(self) -> int:
-        return hash(tuple(getattr(self, name) for name in _PARAMETER_ALIAS_TO_NAME.values() if name != "group"))
+        return hash(_PARAMETER_HASHED_FIELD_VALUES(self))
 
     @property
     def show(self) -> bool | None:
@@ -510,6 +510,20 @@ _PARAMETER_NORMALIZERS: dict[str, Callable[[Any], Any]] = {
     "count": _default_if_none_false,
     "short_alias": _short_alias_normalizer,
 }
+
+_PARAMETER_INITIALIZERS = tuple(
+    (
+        alias,
+        name,
+        _PARAMETER_NORMALIZERS.get(name, _identity),
+        _PARAMETER_NORMALIZERS.get(name, _identity)(_PARAMETER_DEFAULTS[name]),
+    )
+    for alias, name in _PARAMETER_ALIAS_TO_NAME.items()
+)
+
+_PARAMETER_FIELD_VALUES = attrgetter(*_PARAMETER_ALIAS_TO_NAME.values())
+
+_PARAMETER_HASHED_FIELD_VALUES = attrgetter(*(name for name in _PARAMETER_ALIAS_TO_NAME.values() if name != "group"))
 
 EMPTY_PARAMETER = Parameter()
 

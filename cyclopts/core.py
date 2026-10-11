@@ -23,7 +23,7 @@ from typing import (
     overload,
 )
 
-from salix import Struct, fields
+from salix import Struct, fields, set_field
 
 from cyclopts.annotations import resolve_annotated
 from cyclopts.app_stack import AppStack
@@ -504,48 +504,51 @@ class App(Struct, frozen=False, eq=False):
         error_formatter: Callable[["CycloptsError"], Any] | None = None,
         result_action: ResultAction | ResultActionSingle | None = None,
     ) -> None:
-        self._name = name  # type: ignore[assignment]
-        self._help = help
-        self.usage = usage
-        self.alias = alias  # type: ignore[assignment]
-        self.synonym = synonym  # type: ignore[assignment]
-        self.default_command = default_command
-        self.default_parameter = default_parameter
-        self._config = config  # type: ignore[assignment]
-        self.version = version
-        self._version_flags = version_flags
-        self.show = show
-        self._console = console
-        self._error_console = error_console
-        self._help_flags = help_flags
-        self.help_format = help_format
-        self.help_on_error = help_on_error
-        self.help_prologue = help_prologue
-        self.help_epilogue = help_epilogue
-        self.version_format = version_format
-        self.group = group  # type: ignore[assignment]
-        self._group_arguments = group_arguments
-        self._group_parameters = group_parameters
-        self._group_commands = group_commands
-        self.validator = validator  # type: ignore[assignment]
-        self._name_transform = name_transform
-        self._sort_key = sort_key
-        self.end_of_options_delimiter = end_of_options_delimiter
-        self.print_error = print_error
-        self.exit_on_error = exit_on_error
-        self.verbose = verbose
-        self.suppress_keyboard_interrupt = suppress_keyboard_interrupt
-        self.backend = backend
-        self.help_formatter = help_formatter
-        self.error_formatter = error_formatter
-        self.result_action = result_action  # type: ignore[assignment]
-        self._commands = {}
-        self._flattened_subapps = []
-        self._meta = None
-        self._meta_parent = None
-        self._instantiating_module_cache = UNSET
-        self._fallback_console = None
-        self._fallback_error_console = None
+        for field_name, value in (
+            ("_name", name),
+            ("_help", help),
+            ("usage", usage),
+            ("alias", alias),
+            ("synonym", synonym),
+            ("default_command", default_command),
+            ("default_parameter", default_parameter),
+            ("_config", config),
+            ("version", version),
+            ("_version_flags", version_flags),
+            ("show", show),
+            ("_console", console),
+            ("_error_console", error_console),
+            ("_help_flags", help_flags),
+            ("help_format", help_format),
+            ("help_on_error", help_on_error),
+            ("help_prologue", help_prologue),
+            ("help_epilogue", help_epilogue),
+            ("version_format", version_format),
+            ("group", group),
+            ("_group_arguments", group_arguments),
+            ("_group_parameters", group_parameters),
+            ("_group_commands", group_commands),
+            ("validator", validator),
+            ("_name_transform", name_transform),
+            ("_sort_key", sort_key),
+            ("end_of_options_delimiter", end_of_options_delimiter),
+            ("print_error", print_error),
+            ("exit_on_error", exit_on_error),
+            ("verbose", verbose),
+            ("suppress_keyboard_interrupt", suppress_keyboard_interrupt),
+            ("backend", backend),
+            ("help_formatter", help_formatter),
+            ("error_formatter", error_formatter),
+            ("result_action", result_action),
+            ("_commands", {}),
+            ("_flattened_subapps", []),
+            ("_meta", None),
+            ("_meta_parent", None),
+            ("_instantiating_module_cache", UNSET),
+            ("_fallback_console", None),
+            ("_fallback_error_console", None),
+        ):
+            set_field(self, field_name, _APP_NORMALIZERS.get(field_name, _identity)(value))
         self.app_stack = AppStack(self)
 
         # Trigger the setters
