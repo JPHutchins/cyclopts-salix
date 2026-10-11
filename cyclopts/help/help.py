@@ -11,7 +11,6 @@ from typing import (
     Literal,
 )
 
-from attrs import define, field
 import salix
 from salix import Struct
 

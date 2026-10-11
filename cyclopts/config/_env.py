@@ -1,7 +1,6 @@
 import os
 from typing import TYPE_CHECKING
 
-from attrs import define, field
 from salix import Struct
 
 from cyclopts.argument import Argument, ArgumentCollection, Token

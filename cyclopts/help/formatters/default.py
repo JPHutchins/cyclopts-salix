@@ -3,8 +3,6 @@ from salix import Struct
 
 from typing import TYPE_CHECKING, Any, Optional, Union
 
-from attrs import define
-
 from cyclopts.help.silent import SILENT
 
 if TYPE_CHECKING:
