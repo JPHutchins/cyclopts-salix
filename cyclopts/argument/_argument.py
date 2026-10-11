@@ -30,6 +30,7 @@ from cyclopts.annotations import (
     is_namedtuple,
     is_nonetype,
     is_pydantic,
+    is_salix_struct,
     is_typeddict,
     is_union,
     resolve,
@@ -49,6 +50,7 @@ from cyclopts.field_info import (
     _attrs_field_infos,
     _generic_class_field_infos,
     _pydantic_field_infos,
+    _struct_field_infos,
     _typed_dict_field_infos,
     get_field_infos,
     signature_parameters,
@@ -238,7 +240,9 @@ class Argument:
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
             elif is_dataclass(hint):
-                self._missing_keys_checker = missing_keys_factory(_generic_class_field_infos)
+                self._missing_keys_checker = missing_keys_factory(
+                    _struct_field_infos if is_salix_struct(hint) else _generic_class_field_infos
+                )
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
             elif is_namedtuple(hint):
