@@ -784,11 +784,9 @@ To reject empty slices, use the :class:`~cyclopts.validators.Slice` validator or
 ********************
 User-Defined Classes
 ********************
-Cyclopts supports classically defined user classes, as well as classes defined by the following dataclass-like libraries:
+Cyclopts supports classically defined user classes, as well as classes defined by the following libraries:
 
-* `attrs <https://www.attrs.org/en/stable/>`_
-* `dataclass <https://docs.python.org/3/library/dataclasses.html>`_
-* `NamedTuple <https://docs.python.org/3/library/typing.html#typing.NamedTuple>`_
+* `salix <https://github.com/JPHutchins/salix>`_
 * `pydantic <https://docs.pydantic.dev/latest/>`_
 * `TypedDict <https://docs.python.org/3/library/typing.html#typing.TypedDict>`_
 

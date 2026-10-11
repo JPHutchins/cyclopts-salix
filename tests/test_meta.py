@@ -347,13 +347,12 @@ def test_issue_783_meta_default_usage_shows_options(console):
     When ``meta.default`` defines parameters (besides the ``*tokens`` passthrough),
     the usage line should include ``[OPTIONS]`` to reflect them.
     """
-    from dataclasses import dataclass
+    from salix import Struct
     from typing import Optional
 
     app = App(name="test_app", console=console, result_action="return_value")
 
-    @dataclass
-    class Options:
+    class Options(Struct):
         input: Annotated[Optional[str], Parameter(name=["--input", "-i"])] = None
         output: Annotated[Optional[str], Parameter(name=["--output", "-o"])] = None
 

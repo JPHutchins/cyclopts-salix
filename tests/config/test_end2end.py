@@ -24,7 +24,7 @@ def test_config_end2end(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn, root_keys=["tool", "cyclopts"])
+    app.config = Toml(path=config_fn, root_keys=["tool", "cyclopts"])
 
     @app.default
     def default(key1, key2, *, list1: list[int], dict1: dict[str, int]):

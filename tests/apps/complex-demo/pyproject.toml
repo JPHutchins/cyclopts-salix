@@ -15,11 +15,8 @@ docs = [
 pydantic = [
     "pydantic>=2.0",
 ]
-attrs = [
-    "attrs",
-]
 all = [
-    "complex-demo[docs,pydantic,attrs]",
+    "complex-demo[docs,pydantic]",
 ]
 
 [project.scripts]

@@ -1,10 +1,8 @@
 """Tests for structured types with various parameter kinds (POSITIONAL_ONLY, VAR_POSITIONAL, etc)."""
 
-import sys
-from dataclasses import dataclass, field
 from typing import Annotated
 
-import pytest
+from salix import Struct
 
 from cyclopts import Parameter
 
@@ -131,80 +129,6 @@ def test_generic_class_positional_only_and_keyword_only(app, assert_parse_args):
     assert_parse_args(cmd, "--z test 5", obj=GenericClassPositionalOnlyAndKeywordOnly(5, z="test"))
 
 
-@dataclass
-class DataclassWithKwOnly:
-    """Dataclass with kw_only fields."""
-
-    a: int
-    b: str = field(kw_only=True)
-    c: float = field(default=3.14, kw_only=True)
-
-
-def test_dataclass_kw_only_mixed(app, assert_parse_args):
-    """Test dataclass with mix of normal and kw_only fields."""
-
-    @app.default
-    def cmd(config: Annotated[DataclassWithKwOnly, Parameter(name="*")]):
-        return config
-
-    # Normal field as positional, kw_only as keyword
-    assert_parse_args(cmd, "100 --b hello --c 2.5", config=DataclassWithKwOnly(a=100, b="hello", c=2.5))
-
-    # Order shouldn't matter for keyword-only
-    assert_parse_args(cmd, "--b hello 100 --c 2.5", config=DataclassWithKwOnly(a=100, b="hello", c=2.5))
-
-    # Using default for optional kw_only field
-    assert_parse_args(cmd, "100 --b world", config=DataclassWithKwOnly(a=100, b="world"))
-
-
-@dataclass(kw_only=True)
-class DataclassFullyKwOnly:
-    """Fully keyword-only dataclass."""
-
-    name: str
-    age: int
-
-
-def test_dataclass_fully_kw_only(app, assert_parse_args):
-    """Test dataclass that is entirely kw_only."""
-
-    @app.default
-    def cmd(person: Annotated[DataclassFullyKwOnly, Parameter(name="*")]):
-        return person
-
-    # With keywords
-    assert_parse_args(cmd, "--name Alice --age 30", person=DataclassFullyKwOnly(name="Alice", age=30))
-
-
-def test_dataclass_fully_kw_only_with_accepts_keys_false(app, assert_parse_args):
-    """Test that kw_only dataclass works with accepts_keys=False.
-
-    This is the exact scenario from issue #648.
-    """
-
-    @dataclass(kw_only=True)
-    class Config:
-        name: str
-
-    @app.default
-    def cmd(config: Annotated[Config, Parameter(name="config", accepts_keys=False)]):
-        return config
-
-    assert_parse_args(cmd, "--config Bob", config=Config(name="Bob"))
-
-
-@pytest.mark.skipif(sys.version_info < (3, 10), reason="Requires Python 3.10+ for positional-only in dataclass")
-def test_dataclass_positional_only_and_keyword_only():
-    """Test dataclass with both positional-only and keyword-only fields.
-
-    Note: Python dataclasses don't directly support positional-only parameters.
-    This test is included for completeness but may not be applicable.
-    """
-    # Dataclasses don't support positional-only parameters directly.
-    # They only support kw_only. This test documents that limitation.
-    pass
-
-
 def test_generic_class_all_keyword_or_positional(app, assert_parse_args):
     """Test that POSITIONAL_OR_KEYWORD works correctly."""
 
@@ -227,24 +151,25 @@ def test_generic_class_all_keyword_or_positional(app, assert_parse_args):
     assert_parse_args(cmd, "--x 42 --y hello", obj=SimpleClass(42, "hello"))
 
 
-@dataclass
-class DataclassNested:
-    """Nested dataclass for testing."""
+class StructInner(Struct):
+    name: str
+    age: int
 
-    inner: DataclassFullyKwOnly
+
+class StructNested(Struct):
+    inner: StructInner
     outer: str
 
 
-def test_nested_dataclass_with_kw_only(app, assert_parse_args):
-    """Test nested dataclass where inner is kw_only."""
+def test_nested_struct(app, assert_parse_args):
+    """Test nested struct."""
 
     @app.default
-    def cmd(data: Annotated[DataclassNested, Parameter(name="*")]):
+    def cmd(data: Annotated[StructNested, Parameter(name="*")]):
         return data
 
-    # Inner kw_only dataclass fields should be accessible
     assert_parse_args(
         cmd,
         "--inner.name Alice --inner.age 25 --outer test",
-        data=DataclassNested(inner=DataclassFullyKwOnly(name="Alice", age=25), outer="test"),
+        data=StructNested(inner=StructInner(name="Alice", age=25), outer="test"),
     )

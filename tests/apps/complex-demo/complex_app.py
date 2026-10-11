@@ -1,9 +1,8 @@
 """Complex Demo Application - Comprehensive edge case testing for documentation generation.
 
 This application tests all known edge cases for cyclopts documentation plugins:
-- Dataclass parameter flattening with @Parameter(name="*")
+- Struct parameter flattening with @Parameter(name="*")
 - Pydantic model support
-- attrs class support
 - 3+ level nested command hierarchies
 - Complex union types (int | Literal[...])
 - Custom groups with Group.create_ordered()
@@ -18,13 +17,13 @@ This application tests all known edge cases for cyclopts documentation plugins:
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
 from enum import Enum, Flag, auto
 from pathlib import Path
 from typing import Annotated, Literal
 
 import cyclopts
 from cyclopts import App, Group, Parameter, validators
+from salix import Struct
 
 # ============================================================================
 # Enums and Flags
@@ -61,13 +60,12 @@ class Permission(Flag):
 
 
 # ============================================================================
-# Dataclasses with Parameter(name="*") for flattening
+# Structs with Parameter(name="*") for flattening
 # ============================================================================
 
 
 @cyclopts.Parameter(name="*")
-@dataclass(frozen=True)
-class DatabaseConfig:
+class DatabaseConfig(Struct):
     """Database connection configuration.
 
     Parameters
@@ -95,8 +93,7 @@ class DatabaseConfig:
 
 
 @cyclopts.Parameter(name="*")
-@dataclass
-class ProcessingConfig:
+class ProcessingConfig(Struct):
     """Data processing configuration.
 
     Parameters
@@ -117,12 +114,11 @@ class ProcessingConfig:
     num_workers: int | Literal["auto"] = "auto"
     quality_level: int | Literal["high", "medium", "low"] = "high"
     device: Literal["cuda", "cpu", "auto"] | int = "auto"
-    output_formats: list[OutputFormat] = field(default_factory=lambda: [OutputFormat.JSON])
+    output_formats: list[OutputFormat] = [OutputFormat.JSON]
 
 
 @cyclopts.Parameter(name="*")
-@dataclass(frozen=True)
-class PathConfig:
+class PathConfig(Struct):
     """Path configuration for input/output directories.
 
     Parameters
@@ -143,10 +139,9 @@ class PathConfig:
     log_dir: Path = Path("logs")
 
 
-# Nested dataclass (dataclass containing another dataclass)
+# Nested struct (struct containing another struct)
 @cyclopts.Parameter(name="*")
-@dataclass
-class PipelineConfig:
+class PipelineConfig(Struct):
     """Complete pipeline configuration combining multiple configs.
 
     Parameters
@@ -162,8 +157,8 @@ class PipelineConfig:
     """
 
     name: str = "default-pipeline"
-    paths: PathConfig = field(default_factory=PathConfig)
-    processing: ProcessingConfig = field(default_factory=ProcessingConfig)
+    paths: PathConfig = PathConfig()
+    processing: ProcessingConfig = ProcessingConfig()
     dry_run: bool = False
 
 
@@ -220,15 +215,11 @@ class AuthConfig(BaseModel):
 
 
 # ============================================================================
-# attrs Classes
+# Cache Struct
 # ============================================================================
 
-import attrs
-
-
-@attrs.define
-class CacheConfig:
-    """Cache configuration using attrs.
+class CacheConfig(Struct):
+    """Cache configuration using a salix Struct.
 
     Parameters
     ----------
@@ -623,7 +614,7 @@ def process(
 ):
     """Process data files with configurable options.
 
-    This command demonstrates dataclass parameter flattening where
+    This command demonstrates struct parameter flattening where
     all fields from ProcessingConfig and PathConfig become CLI options.
 
     Parameters
@@ -645,7 +636,7 @@ def pipeline(
 ):
     """Run a complete data pipeline.
 
-    Demonstrates nested dataclass flattening (PipelineConfig contains
+    Demonstrates nested struct flattening (PipelineConfig contains
     PathConfig and ProcessingConfig).
 
     Parameters
@@ -770,7 +761,7 @@ def configure(
 ):
     """Configure cache settings.
 
-    Demonstrates attrs class support for CLI parameters.
+    Demonstrates salix Struct support for CLI parameters.
 
     Parameters
     ----------

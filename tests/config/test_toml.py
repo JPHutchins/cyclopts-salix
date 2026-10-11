@@ -22,7 +22,7 @@ def test_config_toml(tmp_path):
             """
         )
     )
-    config = Toml(fn)
+    config = Toml(path=fn)
     assert config.config == {
         "foo": {
             "key1": "foo1",
@@ -52,8 +52,8 @@ def test_duplicate_config_toml_with_meta(config_path):
     )
     app = App(
         config=(
-            Toml("config.toml", root_keys=("this-test",)),
-            Toml("config.toml", root_keys=("this-test",)),  # Duplicate configs should still work.
+            Toml(path="config.toml", root_keys=("this-test",)),
+            Toml(path="config.toml", root_keys=("this-test",)),  # Duplicate configs should still work.
         ),
         result_action="return_value",
     )

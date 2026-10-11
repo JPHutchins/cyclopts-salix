@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass, field
 from datetime import datetime
 from textwrap import dedent
 from typing import Annotated, Literal
@@ -9,6 +8,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, SecretBytes, SecretStr, model_validator, validate_call
 from pydantic import ValidationError as PydanticValidationError
 from pydantic.alias_generators import to_camel
+from salix import Struct
 
 from cyclopts import MissingArgumentError, Parameter, UnknownOptionError, ValidationError
 
@@ -357,7 +357,7 @@ def test_parameter_decorator_pydantic_nested_1(app, console):
 
     See Also
     --------
-        test_parameter_decorator_dataclass_nested_1
+        test_parameter_decorator_struct_nested_1
     """
 
     class S3Path(BaseModel):
@@ -453,8 +453,7 @@ def test_pydantic_annotated_field_discriminator(app, assert_parse_args, console)
 
     Dataset = Annotated[DatasetImage | DatasetVideo, pydantic.Field(discriminator="type")]
 
-    @dataclass
-    class Config:
+    class Config(Struct):
         dataset: Dataset  # pyright: ignore[reportInvalidTypeForm]
 
     @app.default
@@ -646,84 +645,6 @@ def test_pydantic_roundtrip_json_with_aliases(app, assert_parse_args, monkeypatc
 
     # Should parse back to the exact same object
     assert_parse_args(run, "", original_spec)
-
-
-@pytest.mark.parametrize(
-    "dataclass_decorator",
-    [
-        dataclass,
-        pydantic.dataclasses.dataclass,
-    ],
-)
-def test_pydantic_annotated_field_discriminator_dataclass(app, assert_parse_args, dataclass_decorator):
-    """Pydantic discriminator should work, even if the union'd types are not pydantic.BaseModel."""
-
-    @dataclass_decorator
-    class DatasetImage:
-        type: Literal["image"]
-        path: str
-        resolution: tuple[int, int]
-
-    @dataclass_decorator
-    class DatasetVideo:
-        type: Literal["video"]
-        path: str
-        resolution: tuple[int, int]
-        fps: int
-
-    Dataset = Annotated[DatasetImage | DatasetVideo, pydantic.Field(discriminator="type")]
-
-    @dataclass_decorator
-    class Config:
-        dataset: Dataset  # pyright: ignore[reportInvalidTypeForm]
-
-    @app.default
-    def main(
-        config: Annotated[Config | None, Parameter(name="*")] = None,
-    ):
-        pass
-
-    assert_parse_args(
-        main,
-        "--dataset.type=image --dataset.path foo.png --dataset.resolution 640 480",
-        Config(DatasetImage(type="image", path="foo.png", resolution=(640, 480))),  # pyright: ignore
-    )
-    assert_parse_args(
-        main,
-        "--dataset.type=video --dataset.path foo.mp4 --dataset.resolution 640 480 --dataset.fps 30",
-        Config(DatasetVideo(type="video", path="foo.mp4", resolution=(640, 480), fps=30)),  # pyright: ignore
-    )
-
-
-def test_pydantic_annotated_field_discriminator_missing_argument(app):
-    """Regression test for https://github.com/BrianPugh/cyclopts/issues/725
-
-    Missing required field in a discriminated union should raise MissingArgumentError,
-    not an IndexError.
-    """
-
-    @dataclass
-    class Cat:
-        rainbow: bool
-        type: Literal["cat"]
-
-    @dataclass
-    class Dog:
-        type: Literal["dog"]
-
-    @dataclass
-    class AnimalParameter:
-        animal: Annotated[Cat | Dog, pydantic.Field(discriminator="type")]
-
-    @app.default
-    def main(animal_parameter: Annotated[AnimalParameter, Parameter(name="*")]):
-        pass
-
-    with pytest.raises(MissingArgumentError) as exc_info:
-        app(["--animal.type", "cat"], exit_on_error=False)
-
-    assert exc_info.value.argument is not None
-    assert exc_info.value.argument.parameter.name == ("--animal.rainbow",)
 
 
 def test_pydantic_discriminated_union_in_list_sibling_field(app):
@@ -975,8 +896,8 @@ def test_pydantic_inheritance_simple(app, console):
     assert "Field from derived pydantic model" in actual
 
 
-def test_stdlib_dataclass_command_default_factory(app, assert_parse_args):
-    """Stdlib dataclass commands with a ``default_factory`` must not be pydantic-validated against the sentinel.
+def test_salix_struct_command_default_factory(app, assert_parse_args):
+    """Salix struct commands with a non-empty list default must not be pydantic-validated against the sentinel.
 
     With pydantic installed, the unfilled ``default_factory`` sentinel
     (``_HAS_DEFAULT_FACTORY``) was passed to ``pydantic.TypeAdapter.validate_python``,
@@ -986,9 +907,8 @@ def test_stdlib_dataclass_command_default_factory(app, assert_parse_args):
     """
 
     @app.command
-    @dataclass
-    class Test:
-        numbers: list[int] = field(default_factory=lambda: [1, 2, 3])
+    class Test(Struct):
+        numbers: list[int] = [1, 2, 3]
 
         def __call__(self) -> str:
             return str(self.numbers)
@@ -1001,7 +921,7 @@ def test_stdlib_dataclass_command_default_factory(app, assert_parse_args):
 def test_pydantic_basemodel_command_default_factory(app, assert_parse_args):
     """BaseModel commands with a ``default_factory`` must not be validated against the sentinel.
 
-    Pydantic's generated ``__signature__`` reuses dataclasses'
+    Pydantic's generated ``__signature__`` reuses the stdlib's
     ``_HAS_DEFAULT_FACTORY`` sentinel as the default for ``default_factory``
     fields, which was passed to ``pydantic.TypeAdapter.validate_python``,
     raising a ValidationError even though the user provided no tokens.
@@ -1021,10 +941,10 @@ def test_pydantic_basemodel_command_default_factory(app, assert_parse_args):
     assert app(["test"], result_action=("call_if_callable", "return_value"), exit_on_error=False) == "[1, 2, 3]"
 
 
-def test_attrs_nested_factory(app, assert_parse_args):
+def test_struct_nested_factory(app, assert_parse_args):
     """Attrs fields with a ``factory`` must not have a substituted ``None`` default pydantic-validated.
 
-    ``_attrs_field_infos`` substituted ``default=None`` for factory fields; with
+    a former field-info builder substituted ``default=None`` for factory fields; with
     pydantic installed, that ``None`` was passed to
     ``pydantic.TypeAdapter.validate_python`` against the field's real annotation
     (e.g. ``list[int]``), raising a ValidationError even though the user provided
@@ -1032,11 +952,8 @@ def test_attrs_nested_factory(app, assert_parse_args):
 
     https://github.com/BrianPugh/cyclopts/issues/857
     """
-    import attrs
-
-    @attrs.define
-    class Config:
-        numbers: list[int] = attrs.field(factory=lambda: [1, 2, 3])
+    class Config(Struct):
+        numbers: list[int] = [1, 2, 3]
 
     @app.command
     def cmd(config: Config | None = None):
@@ -1046,22 +963,19 @@ def test_attrs_nested_factory(app, assert_parse_args):
     assert_parse_args(cmd, "cmd --config.numbers=5", Config(numbers=[5]))
 
 
-def test_attrs_command_factory(app, assert_parse_args):
-    """Attrs commands with a ``factory`` must not be pydantic-validated against the ``NOTHING`` sentinel.
+def test_struct_command_factory(app, assert_parse_args):
+    """Struct commands with a list default must not be pydantic-validated against a private sentinel.
 
-    Attrs' generated ``__init__`` signature uses ``attrs.NOTHING`` as the default for
+    A generated ``__init__`` signature may use a private sentinel as the default for
     factory fields; with pydantic installed it was passed to
     ``pydantic.TypeAdapter.validate_python``, raising a ValidationError even though
     the user provided no tokens.
 
     https://github.com/BrianPugh/cyclopts/issues/857
     """
-    import attrs
-
     @app.command
-    @attrs.define
-    class Test:
-        numbers: list[int] = attrs.field(factory=lambda: [1, 2, 3])
+    class Test(Struct):
+        numbers: list[int] = [1, 2, 3]
 
         def __call__(self) -> str:
             return str(self.numbers)
@@ -1078,7 +992,7 @@ def test_pydantic_empty_dict_config_value(app, assert_parse_args):
     class Options(BaseModel):
         threshold: int = 5
 
-    app.config = (Dict({"options": {}}),)
+    app.config = (Dict(data={"options": {}}),)
 
     @app.default
     def main(options: Options):
@@ -1088,7 +1002,7 @@ def test_pydantic_empty_dict_config_value(app, assert_parse_args):
 
 
 def test_pydantic_default_factory_help(app, console):
-    """Zero-arg ``default_factory`` values render in help, consistent with dataclass/attrs.
+    """Zero-arg ``default_factory`` values render in help, consistent with structs.
 
     Factories that require validated data cannot be invoked during introspection,
     so those fields show no default.

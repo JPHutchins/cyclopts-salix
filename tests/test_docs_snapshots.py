@@ -82,7 +82,7 @@ class TestMarkdownSnapshots:
         assert markdown == md_snapshot
 
     def test_data_commands_markdown(self, ensure_complex_demo_importable, md_snapshot):
-        """Snapshot markdown for data commands (tests dataclass flattening)."""
+        """Snapshot markdown for data commands (tests struct flattening)."""
         from complex_app import app
 
         from cyclopts.docs.markdown import generate_markdown_docs
@@ -236,7 +236,7 @@ class TestRstSnapshots:
         assert rst == rst_snapshot
 
     def test_data_commands_rst(self, ensure_complex_demo_importable, rst_snapshot):
-        """Snapshot RST for data commands (tests dataclass flattening)."""
+        """Snapshot RST for data commands (tests struct flattening)."""
         from complex_app import app
 
         from cyclopts.docs.rst import generate_rst_docs

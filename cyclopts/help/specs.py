@@ -1,3 +1,4 @@
+from salix import Struct, replace
 import math
 import sys
 import textwrap
@@ -5,14 +6,11 @@ from collections.abc import Iterable
 from operator import attrgetter
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union
 
-from attrs import evolve
-
 if sys.version_info >= (3, 11):
     from typing import Self
 else:
     from typing_extensions import Self
 
-from cyclopts.utils import frozen
 
 if TYPE_CHECKING:
     from rich.box import Box
@@ -251,8 +249,7 @@ class AsteriskRenderer:
         return "*" if entry.required else ""
 
 
-@frozen
-class ColumnSpec:
+class ColumnSpec(Struct, frozen=True):
     """Specification for a single column in a help table.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to define
@@ -401,7 +398,7 @@ class ColumnSpec:
         return "" if value is None else value
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)
 
 
 # For Parameters:
@@ -498,8 +495,7 @@ def get_default_parameter_columns(
         )
 
 
-@frozen
-class TableSpec:
+class TableSpec(Struct, frozen=True):
     """Specification for table layout and styling.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to control
@@ -705,11 +701,10 @@ class TableSpec:
         return table
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)
 
 
-@frozen
-class PanelSpec:
+class PanelSpec(Struct, frozen=True):
     """Specification for panel (outer box) styling.
 
     Used by :class:`~cyclopts.help.formatters.default.DefaultFormatter` to control
@@ -837,4 +832,4 @@ class PanelSpec:
         return Panel(renderable, **opts)
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)

@@ -11,7 +11,8 @@ from typing import (
     Literal,
 )
 
-from attrs import define, evolve, field
+import salix
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -25,7 +26,7 @@ from cyclopts.field_info import get_field_infos
 from cyclopts.group import Group
 from cyclopts.help.inline_text import InlineText
 from cyclopts.help.silent import SILENT, SilentRich
-from cyclopts.utils import SortHelper, frozen, is_class_and_subclass, resolve_callables, slice_to_str
+from cyclopts.utils import SortHelper, is_class_and_subclass, resolve_callables, slice_to_str
 
 if TYPE_CHECKING:
     from rich.console import RenderableType
@@ -74,8 +75,7 @@ def _description_converter(value: Any | None) -> Any:
     return value
 
 
-@frozen(kw_only=True)
-class HelpEntry:
+class HelpEntry(Struct, frozen=True):
     """Container for help table entry data."""
 
     positive_names: tuple[str, ...] = ()
@@ -130,11 +130,10 @@ class HelpEntry:
     """Default value for this parameter to display. None means no default to show."""
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return salix.replace(self, **kwargs)
 
 
-@define
-class HelpPanel:
+class HelpPanel(Struct, frozen=False):
     """Data container for help panel information."""
 
     format: Literal["command", "parameter"]
@@ -143,20 +142,20 @@ class HelpPanel:
     title: "RenderableType"
     """The title text displayed at the top of the help panel."""
 
-    description: Any = field(
-        default=None,
-        converter=_description_converter,
-    )
+    description: Any = None
     """Optional description text displayed below the title.
 
     Typically a :class:`str` or a :obj:`~rich.console.RenderableType`
     """
 
-    entries: list[HelpEntry] = field(factory=list)
+    entries: list[HelpEntry] = []
     """List of help entries to display (in order) in the panel."""
 
+    def __post_init__(self) -> None:
+        self.description = _description_converter(self.description)
+
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return salix.replace(self, **kwargs)
 
     def _remove_duplicates(self):
         seen, out = set(), []
@@ -402,9 +401,9 @@ def format_doc(app: "App", format: str) -> InlineText | SilentRich:
 def _is_dynamic_structured_dict(argument: "Argument") -> bool:
     """True if ``argument`` is ``dict[str, StructuredType]`` eligible for help expansion.
 
-    Covers pydantic, dataclass, attrs, TypedDict, NamedTuple via the shared
+    Covers pydantic, salix Struct, TypedDict via the shared
     ``get_field_infos`` dispatcher.  Uses the same indicators as the parser's
-    dict branch in ``Argument.__attrs_post_init__``: ``_accepts_keywords`` is
+    dict branch in ``Argument.__post_init__``: ``_accepts_keywords`` is
     set, ``_lookup`` is empty (no pre-built children — keys are dynamic), and
     ``_default`` is the value type with structured fields.
 
@@ -460,7 +459,7 @@ def _expand_structured_dict_for_help(
         base = _make_help_entry(argument, format)
         if outer_long_names:
             suffixed_names = tuple(f"{n}.{{NAME}}" for n in base.positive_names)
-            yield evolve(base, positive_names=suffixed_names)
+            yield salix.replace(base, positive_names=suffixed_names)
         else:
             yield base
         return

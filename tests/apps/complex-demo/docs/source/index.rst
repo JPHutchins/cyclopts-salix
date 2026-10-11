@@ -9,9 +9,8 @@ Features
 
 This demo includes:
 
-* **Dataclass parameter flattening** - Using ``@Parameter(name="*")``
+* **Struct parameter flattening** - Using ``@Parameter(name="*")``
 * **Pydantic model support** - If pydantic is installed
-* **attrs class support** - If attrs is installed
 * **4-level nested commands** - ``admin → users → permissions → roles``
 * **Complex union types** - ``int | Literal["auto"]`` patterns
 * **Custom groups** - Organized command structure

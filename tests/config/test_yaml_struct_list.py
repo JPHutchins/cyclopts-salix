@@ -1,17 +1,16 @@
-"""Test YAML configuration with lists of dataclasses and TypedDict.
+"""Test YAML configuration with lists of structs and TypedDict.
 
 This addresses GitHub issue #507.
 """
 
-from dataclasses import dataclass
 from textwrap import dedent
 from typing import Literal, TypedDict
 
 from cyclopts.config import Yaml
+from salix import Struct
 
 
-@dataclass
-class User:
+class User(Struct):
     name: str
     age: int
     region: Literal["us", "ca"] = "us"
@@ -22,7 +21,7 @@ class Config(TypedDict):
     value: int
 
 
-def test_yaml_list_of_dataclasses(app, tmp_path, assert_parse_args):
+def test_yaml_list_of_structs(app, tmp_path, assert_parse_args):
     """Test the exact scenario from GitHub issue #507 with YAML config."""
     config_fn = tmp_path / "config.yaml"
 
@@ -40,7 +39,7 @@ def test_yaml_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -50,8 +49,8 @@ def test_yaml_list_of_dataclasses(app, tmp_path, assert_parse_args):
     assert_parse_args(main, "", [User("alice", 22, "us"), User("bob", 33, "ca")])
 
 
-def test_yaml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_args):
-    """Test that CLI arguments override YAML config for list of dataclasses."""
+def test_yaml_list_of_structs_with_cli_override(app, tmp_path, assert_parse_args):
+    """Test that CLI arguments override YAML config for list of structs."""
     config_fn = tmp_path / "config.yaml"
 
     config_fn.write_text(
@@ -65,7 +64,7 @@ def test_yaml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -79,8 +78,8 @@ def test_yaml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
     )
 
 
-def test_yaml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
-    """Test empty list of dataclasses from YAML."""
+def test_yaml_empty_list_of_structs(app, tmp_path, assert_parse_args):
+    """Test empty list of structs from YAML."""
     config_fn = tmp_path / "config.yaml"
 
     config_fn.write_text(
@@ -91,7 +90,7 @@ def test_yaml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User] = None):  # pyright: ignore
@@ -100,8 +99,8 @@ def test_yaml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
     assert_parse_args(main, "", [])
 
 
-def test_yaml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
-    """Test single dataclass item in YAML list."""
+def test_yaml_single_struct_in_list(app, tmp_path, assert_parse_args):
+    """Test single struct item in YAML list."""
     config_fn = tmp_path / "config.yaml"
 
     config_fn.write_text(
@@ -115,7 +114,7 @@ def test_yaml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -142,7 +141,7 @@ def test_yaml_list_of_typeddict(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(configs: list[Config]):
@@ -159,17 +158,15 @@ def test_yaml_list_of_typeddict(app, tmp_path, assert_parse_args):
     )
 
 
-def test_yaml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
-    """Test nested dataclass structure from YAML."""
+def test_yaml_nested_struct_structure(app, tmp_path, assert_parse_args):
+    """Test nested struct structure from YAML."""
 
-    @dataclass
-    class Address:
+    class Address(Struct):
         street: str
         city: str
         country: str = "US"
 
-    @dataclass
-    class Person:
+    class Person(Struct):
         name: str
         age: int
         address: Address
@@ -196,7 +193,7 @@ def test_yaml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(people: list[Person]):
@@ -225,7 +222,7 @@ def test_yaml_mixed_config_and_cli(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Yaml(config_fn)
+    app.config = Yaml(path=config_fn)
 
     @app.default
     def main(users: list[User], verbose: bool = False):

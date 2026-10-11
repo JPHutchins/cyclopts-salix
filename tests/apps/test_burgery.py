@@ -10,7 +10,7 @@ config_file = Path(__file__).parent / "config.toml"
 app = App(
     name="burgery",
     help="Welcome to Cyclopts Burgery!",
-    config=cyclopts.config.Toml(config_file),
+    config=cyclopts.config.Toml(path=config_file),
     result_action="return_value",  # For testing, return actual values
 )
 app.command(create := App(name="create"))

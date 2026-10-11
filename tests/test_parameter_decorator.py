@@ -1,19 +1,16 @@
-from dataclasses import dataclass
 from textwrap import dedent
 from typing import Annotated
 
 import pytest
-from attrs import define
+from salix import Struct
 
 from cyclopts import Parameter
 from cyclopts.exceptions import UnknownOptionError
 
 
-@pytest.mark.parametrize("decorator", [dataclass, define])
-def test_parameter_decorator_dataclass(app, assert_parse_args, decorator):
+def test_parameter_decorator_struct(app, assert_parse_args):
     @Parameter(name="*")  # Flatten namespace.
-    @decorator
-    class User:
+    class User(Struct):
         name: str
         age: int
 
@@ -25,20 +22,17 @@ def test_parameter_decorator_dataclass(app, assert_parse_args, decorator):
     assert_parse_args(create, "create --name=Bob --age=100", user=User("Bob", 100))  # pyright: ignore[reportCallIssue]
 
 
-@pytest.mark.parametrize("decorator", [dataclass, define])
-def test_parameter_decorator_dataclass_nested_1(app, decorator, console):
+def test_parameter_decorator_struct_nested_1(app, console):
     """
     https://github.com/BrianPugh/cyclopts/issues/320
     """
 
-    @decorator
-    class S3Path:
+    class S3Path(Struct):
         bucket: Annotated[str, Parameter()]
         key: Annotated[str, Parameter()]
 
     @Parameter(name="*")  # Flatten namespace.
-    @decorator
-    class S3CliParams:
+    class S3CliParams(Struct):
         path: Annotated[S3Path, Parameter(name="*")]
         region: Annotated[str, Parameter(name="region")]
 
@@ -65,17 +59,15 @@ def test_parameter_decorator_dataclass_nested_1(app, decorator, console):
     assert actual == expected
 
 
-def test_parameter_decorator_dataclass_inheritance(app, assert_parse_args):
+def test_parameter_decorator_struct_inheritance(app, assert_parse_args):
     @Parameter(name="person")  # Should override the name="u" below.
     @Parameter(name="u", negative_bool=[])
-    @dataclass
-    class User:
+    class User(Struct):
         name: str
         age: int
         privileged: bool = False
 
     @Parameter(name="a", negative_bool=None)  # Should revert to Cyclopts defaults
-    @dataclass
     class Admin(User):
         privileged: bool = True
 

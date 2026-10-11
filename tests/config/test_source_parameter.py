@@ -15,7 +15,7 @@ def test_json_default_source(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps({"name": "Alice"}))
 
-    config = Json(config_file)
+    config = Json(path=config_file)
     assert config.source == str(config_file.absolute())
 
 
@@ -24,7 +24,7 @@ def test_json_custom_source(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps({"name": "Alice"}))
 
-    config = Json(config_file, source="my-custom-source")
+    config = Json(path=config_file, _source="my-custom-source")
     assert config.source == "my-custom-source"
 
 
@@ -33,7 +33,7 @@ def test_json_custom_source_in_error(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps({"age": 30}))
 
-    app = App(config=Json(config_file, source="api-config"), result_action="return_value")
+    app = App(config=Json(path=config_file, _source="api-config"), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -48,7 +48,7 @@ def test_json_source_setter(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps({"name": "Alice"}))
 
-    config = Json(config_file)
+    config = Json(path=config_file)
     original_source = config.source
 
     config.source = "updated-source"
@@ -63,7 +63,7 @@ def test_toml_default_source(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text('[main]\nname = "Alice"')
 
-    config = Toml(config_file)
+    config = Toml(path=config_file)
     assert config.source == str(config_file.absolute())
 
 
@@ -72,7 +72,7 @@ def test_toml_custom_source(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text('[main]\nname = "Alice"')
 
-    config = Toml(config_file, source="my-toml-source")
+    config = Toml(path=config_file, _source="my-toml-source")
     assert config.source == "my-toml-source"
 
 
@@ -81,7 +81,7 @@ def test_yaml_default_source(tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("main:\n  name: Alice")
 
-    config = Yaml(config_file)
+    config = Yaml(path=config_file)
     assert config.source == str(config_file.absolute())
 
 
@@ -90,25 +90,25 @@ def test_yaml_custom_source(tmp_path):
     config_file = tmp_path / "config.yaml"
     config_file.write_text("main:\n  name: Alice")
 
-    config = Yaml(config_file, source="my-yaml-source")
+    config = Yaml(path=config_file, _source="my-yaml-source")
     assert config.source == "my-yaml-source"
 
 
 def test_env_default_source():
     """Test that Env uses 'env' as default source."""
-    config = Env("TEST_")
+    config = Env(prefix="TEST_")
     assert config.source == "env"
 
 
 def test_env_custom_source():
     """Test that Env accepts custom source parameter."""
-    config = Env("TEST_", source="environment-variables")
+    config = Env(prefix="TEST_", source="environment-variables")
     assert config.source == "environment-variables"
 
 
 def test_env_custom_source_in_tokens():
     """Test that Env custom source is used when creating tokens."""
-    app = App(config=Env("TEST_", source="custom-env"), result_action="return_value")
+    app = App(config=Env(prefix="TEST_", source="custom-env"), result_action="return_value")
 
     @app.default
     def main(name: str = "default"):
@@ -124,13 +124,13 @@ def test_env_custom_source_in_tokens():
 
 def test_dict_default_source():
     """Test that Dict uses 'dict' as default source."""
-    config = Dict({"name": "Alice"})
+    config = Dict(data={"name": "Alice"})
     assert config.source == "dict"
 
 
 def test_dict_custom_source():
     """Test that Dict accepts custom source parameter."""
-    config = Dict({"name": "Alice"}, source="api-response")
+    config = Dict(data={"name": "Alice"}, _source="api-response")
     assert config.source == "api-response"
 
 
@@ -141,9 +141,9 @@ def test_multiple_configs_with_custom_sources(tmp_path):
 
     app = App(
         config=[
-            Json(json_file, source="json-config"),
-            Dict({"age": 30}, source="dict-config"),
-            Env("TEST_", source="env-config"),
+            Json(path=json_file, _source="json-config"),
+            Dict(data={"age": 30}, _source="dict-config"),
+            Env(prefix="TEST_", source="env-config"),
         ],
         result_action="return_value",
     )
@@ -165,7 +165,7 @@ def test_source_preserved_across_app_calls(tmp_path):
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps({"value": 42}))
 
-    config = Json(config_file, source="persistent-source")
+    config = Json(path=config_file, _source="persistent-source")
     app = App(config=config, result_action="return_value")
 
     @app.default

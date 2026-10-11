@@ -84,14 +84,13 @@ def test_bind_dict_value_type_converter(app):
     assert app("foo --d.a=xyz", exit_on_error=False, result_action="return_value") == {"a": "XYZ"}
 
 
-def test_bind_dict_value_type_validator_nested_in_dataclass(app):
-    from dataclasses import dataclass
+def test_bind_dict_value_type_validator_nested_in_struct(app):
+    from salix import Struct
 
     from cyclopts.exceptions import ValidationError
     from cyclopts.types import PositiveInt
 
-    @dataclass
-    class Config:
+    class Config(Struct):
         d: dict[str, PositiveInt]
 
     @app.command

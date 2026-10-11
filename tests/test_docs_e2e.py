@@ -134,8 +134,8 @@ class TestMkDocsBuild:
         shutil.which("mkdocs") is None,
         reason="mkdocs not installed or not in PATH",
     )
-    def test_mkdocs_output_contains_dataclass_params(self, mkdocs_build_dir, ensure_complex_demo_importable):
-        """Test that dataclass-flattened parameters appear correctly."""
+    def test_mkdocs_output_contains_struct_params(self, mkdocs_build_dir, ensure_complex_demo_importable):
+        """Test that struct-flattened parameters appear correctly."""
         pytest.importorskip("mkdocs")
 
         result = _run_command(
@@ -147,7 +147,7 @@ class TestMkDocsBuild:
         if result.returncode != 0:
             pytest.skip(f"mkdocs build failed: {result.stderr}")
 
-        # Check data page for flattened dataclass parameters
+        # Check data page for flattened struct parameters
         data_page = mkdocs_build_dir / "cli" / "data" / "index.html"
         if not data_page.exists():
             data_page = mkdocs_build_dir / "cli" / "data.html"
@@ -157,7 +157,7 @@ class TestMkDocsBuild:
 
         content = data_page.read_text()
 
-        # Verify flattened dataclass parameters appear
+        # Verify flattened struct parameters appear
         # These come from ProcessingConfig and PathConfig
         assert "batch" in content.lower(), "batch-size parameter not found"
         assert "worker" in content.lower(), "workers parameter not found"
@@ -355,8 +355,8 @@ class TestSphinxBuild:
         shutil.which("sphinx-build") is None,
         reason="sphinx-build not installed or not in PATH",
     )
-    def test_sphinx_output_contains_dataclass_params(self, sphinx_build_dir, ensure_complex_demo_importable):
-        """Test that dataclass-flattened parameters appear correctly."""
+    def test_sphinx_output_contains_struct_params(self, sphinx_build_dir, ensure_complex_demo_importable):
+        """Test that struct-flattened parameters appear correctly."""
         pytest.importorskip("sphinx")
 
         source_dir = COMPLEX_DEMO_DIR / "docs" / "source"
@@ -369,14 +369,14 @@ class TestSphinxBuild:
         if result.returncode != 0:
             pytest.skip(f"sphinx-build failed: {result.stderr}")
 
-        # Check data page for flattened dataclass parameters
+        # Check data page for flattened struct parameters
         data_page = sphinx_build_dir / "cli" / "data.html"
         if not data_page.exists():
             pytest.skip(f"Data page not found. Contents: {list(sphinx_build_dir.rglob('*.html'))}")
 
         content = data_page.read_text()
 
-        # Verify flattened dataclass parameters appear
+        # Verify flattened struct parameters appear
         assert "batch" in content.lower(), "batch-size parameter not found"
         assert "worker" in content.lower(), "workers parameter not found"
 
@@ -447,8 +447,8 @@ class TestDocstringFormats:
         assert "count" in sphinx_style.__doc__
 
 
-class TestDataclassFlattening:
-    """Test that dataclass parameter flattening works correctly."""
+class TestStructFlattening:
+    """Test that struct parameter flattening works correctly."""
 
     @pytest.fixture
     def ensure_complex_demo_importable(self):
@@ -457,18 +457,18 @@ class TestDataclassFlattening:
         yield
         sys.path.remove(str(COMPLEX_DEMO_DIR))
 
-    def test_dataclass_config_imported(self, ensure_complex_demo_importable):
-        """Test that dataclass configs can be imported."""
+    def test_struct_config_imported(self, ensure_complex_demo_importable):
+        """Test that struct configs can be imported."""
         from complex_app import DatabaseConfig, PathConfig, PipelineConfig, ProcessingConfig
 
-        # All should be dataclasses
+        # All should be structs
         assert DatabaseConfig is not None
         assert ProcessingConfig is not None
         assert PathConfig is not None
         assert PipelineConfig is not None
 
-    def test_dataclass_defaults_accessible(self, ensure_complex_demo_importable):
-        """Test that dataclass defaults are accessible."""
+    def test_struct_defaults_accessible(self, ensure_complex_demo_importable):
+        """Test that struct defaults are accessible."""
         from complex_app import DatabaseConfig
 
         config = DatabaseConfig()
@@ -476,8 +476,8 @@ class TestDataclassFlattening:
         assert config.port == 5432
         assert config.ssl_mode == "prefer"
 
-    def test_nested_dataclass_works(self, ensure_complex_demo_importable):
-        """Test that nested dataclasses work."""
+    def test_nested_struct_works(self, ensure_complex_demo_importable):
+        """Test that nested structs work."""
         from complex_app import PathConfig, PipelineConfig, ProcessingConfig
 
         config = PipelineConfig()

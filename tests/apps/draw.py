@@ -1,8 +1,8 @@
-from dataclasses import KW_ONLY, dataclass  # pyright: ignore[reportAttributeAccessIssue]
 from pathlib import Path
-from typing import Annotated, Literal, NamedTuple
+from typing import Annotated, Literal
 
 import cyclopts
+from salix import Struct
 from cyclopts import App, Parameter
 from cyclopts.types import UInt8
 
@@ -20,13 +20,13 @@ toml_path.write_text(toml_data)
 app = App(
     help="Demo drawing app.",
     config=(
-        cyclopts.config.Toml(toml_path, root_keys=("tool", "draw")),
-        cyclopts.config.Toml(toml_path, root_keys=("tool", "draw"), use_commands_as_keys=False),
+        cyclopts.config.Toml(path=toml_path, root_keys=("tool", "draw")),
+        cyclopts.config.Toml(path=toml_path, root_keys=("tool", "draw"), use_commands_as_keys=False),
     ),
 )
 
 
-class Coordinate(NamedTuple):
+class Coordinate(Struct):
     x: float
     "X coordinate."
 
@@ -35,9 +35,7 @@ class Coordinate(NamedTuple):
 
 
 @Parameter(name="*")
-@dataclass
-class Config:
-    _: KW_ONLY
+class Config(Struct):
     units: Literal["meters", "feet"] = "meters"
     "Drawing units."
 

@@ -1,5 +1,6 @@
 import inspect
 import sys
+import weakref
 from typing import (  # noqa: F401
     Annotated,
     Any,
@@ -10,8 +11,8 @@ from typing import (  # noqa: F401
     get_type_hints,
 )
 
-import attrs
-from attrs import field
+import salix
+from salix import Struct
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -22,13 +23,11 @@ from cyclopts.annotations import (
     NotRequired,
     Required,
     is_annotated,
-    is_attrs,
-    is_dataclass,
     is_enum,
     is_enum_flag,
-    is_namedtuple,
     is_pydantic,
     is_pydantic_secret,
+    is_salix_struct,
     is_typeddict,
     resolve,
     resolve_annotated,
@@ -49,18 +48,17 @@ def _replace_annotated_type(src_type, dst_type):
     return Annotated[(dst_type,) + get_args(src_type)[1:]]  # pyright: ignore
 
 
-@attrs.define
-class FieldInfo:
+class FieldInfo(Struct, frozen=True):
     """Extension of :class:`inspect.Parameter`."""
 
     names: tuple[str, ...] = ()
     kind: inspect._ParameterKind = inspect.Parameter.POSITIONAL_OR_KEYWORD
 
-    required: bool = field(kw_only=True, default=False)
-    default: Any = field(default=inspect.Parameter.empty, kw_only=True)
-    annotation: Any = field(default=inspect.Parameter.empty, kw_only=True)
+    required: bool = False
+    default: Any = inspect.Parameter.empty
+    annotation: Any = inspect.Parameter.empty
 
-    help: str | None = field(default=None, kw_only=True)
+    help: str | None = None
     """Can be populated by additional metadata from another library; e.g. ``pydantic.FieldInfo.description``."""
 
     ###################
@@ -127,7 +125,7 @@ class FieldInfo:
         return self.kind in (KEYWORD_ONLY, VAR_KEYWORD)
 
     def evolve(self, **kwargs):
-        return attrs.evolve(self, **kwargs)
+        return salix.replace(self, **kwargs)
 
 
 def _typed_dict_field_infos(typeddict) -> dict[str, FieldInfo]:
@@ -240,89 +238,28 @@ def _pydantic_field_infos(model) -> dict[str, FieldInfo]:
     return out
 
 
-def _namedtuple_field_infos(hint) -> dict[str, FieldInfo]:
-    out = {}
-    type_hints = get_type_hints(hint)
-    for name in hint._fields:
-        out[name] = FieldInfo(
-            names=(name,),
-            kind=FieldInfo.POSITIONAL_OR_KEYWORD,
-            annotation=type_hints.get(name, str),
-            default=hint._field_defaults.get(name, FieldInfo.empty),
-            required=name not in hint._field_defaults,
+_STRUCT_TYPE_HINTS: "weakref.WeakKeyDictionary[type, dict[str, Any]]" = weakref.WeakKeyDictionary()
+
+
+def _struct_type_hints(hint) -> dict[str, Any]:
+    cached = _STRUCT_TYPE_HINTS.get(hint)
+    if cached is None:
+        cached = _STRUCT_TYPE_HINTS[hint] = get_type_hints(hint, include_extras=True)
+    return cached
+
+
+def _struct_field_infos(hint) -> dict[str, FieldInfo]:
+    type_hints = _struct_type_hints(hint)
+    return {
+        field.name: FieldInfo(
+            names=(field.name,),
+            kind=FieldInfo.KEYWORD_ONLY if field.kw_only else FieldInfo.POSITIONAL_OR_KEYWORD,
+            required=field.default is salix.MISSING,
+            annotation=type_hints.get(field.name, FieldInfo.empty),
+            default=FieldInfo.empty if field.default is salix.MISSING else field.default,
         )
-    return out
-
-
-def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
-    out = {}
-    field_infos = signature_parameters(hint.__init__)
-    for attribute in hint.__attrs_attrs__:
-        if not attribute.init:
-            continue
-
-        field_info = field_infos[attribute.alias]
-
-        if isinstance(attribute.default, attrs.Factory):  # pyright: ignore
-            required = False
-            # ``takes_self`` factories cannot be invoked without an instance; treat those
-            # fields as having no introspectable default.
-            default = FieldInfo.empty if attribute.default.takes_self else attribute.default.factory()
-        elif attribute.default is attrs.NOTHING:
-            required = True
-            default = FieldInfo.empty
-        else:
-            required = False
-            default = attribute.default
-
-        help = attribute.metadata.get("help") if attribute.metadata else None
-
-        out[field_info.name] = field_info.evolve(
-            names=(attribute.alias,), required=required, default=default, help=help
-        )
-    return out
-
-
-def _dataclass_field_infos(hint) -> dict[str, FieldInfo]:
-    import dataclasses
-
-    out = {}
-    fields = dataclasses.fields(hint)
-    type_hints = get_type_hints(hint, include_extras=True)  # resolves stringified type hints
-    for f in fields:
-        if f.default_factory is not dataclasses.MISSING:
-            default = f.default_factory()
-            required = False
-        elif f.default is not dataclasses.MISSING:
-            default = f.default
-            required = False
-        else:
-            default = FieldInfo.empty
-            required = True
-
-        annotation = type_hints.get(f.name, FieldInfo.empty)
-
-        kind = FieldInfo.KEYWORD_ONLY if f.kw_only else FieldInfo.POSITIONAL_OR_KEYWORD
-
-        # Extract help text with precedence order:
-        # 1. metadata["help"] - explicit help in metadata
-        # 2. metadata["doc"] - doc stored in metadata
-        # 3. f.doc - Python 3.14+ field(doc=...) parameter
-        help = None
-        if f.metadata:
-            help = f.metadata.get("help") or f.metadata.get("doc")
-        if not help and hasattr(f, "doc"):
-            help = f.doc  # type: ignore[attr-defined]
-
-        out[f.name] = FieldInfo(
-            names=(f.name,),
-            kind=kind,
-            required=required,
-            annotation=annotation,
-            default=default,
-            help=help,
-        )
-    return out
+        for field in salix.fields(hint)
+    }
 
 
 def _enum_flag_field_infos(enum_flag) -> dict[str, FieldInfo]:
@@ -357,18 +294,12 @@ def get_field_infos(hint) -> dict[str, FieldInfo]:
     if hasattr(hint, "__supertype__"):
         return get_field_infos(hint.__supertype__)
 
-    if is_dataclass(hint):
-        # This must be before ``is_pydantic`` check so that we
-        # can handle pydantic dataclasses as vanilla dataclasses.
-        return _dataclass_field_infos(hint)
+    if is_salix_struct(hint):
+        return _struct_field_infos(hint)
     elif is_pydantic(hint):
         return _pydantic_field_infos(hint)
-    elif is_namedtuple(hint):
-        return _namedtuple_field_infos(hint)
     elif is_typeddict(hint):
         return _typed_dict_field_infos(hint)
-    elif is_attrs(hint):
-        return _attrs_field_infos(hint)
     elif is_enum_flag(hint):
         return _enum_flag_field_infos(hint)
     elif is_enum(hint):
@@ -395,9 +326,8 @@ def signature_parameters(f: Any) -> dict[str, FieldInfo]:
         out[name] = FieldInfo.from_iparam(iparam, annotation=annotation)
 
     if inspect.isclass(func):
-        # ``inspect.signature`` on a class surfaces raw ``__init__`` defaults, which use
-        # library-private sentinels for factory fields (dataclasses' ``_HAS_DEFAULT_FACTORY``
-        # — also reused by pydantic's generated ``__signature__`` — and attrs' ``NOTHING``).
+        # ``inspect.signature`` on a class surfaces raw ``__init__`` defaults, which can be
+        # library-private sentinels for factory fields (e.g. pydantic's generated ``__signature__``).
         # ``get_field_infos`` already resolves defaults per-library; merge its
         # default/requiredness over the raw signature values.
         for name, field_info in get_field_infos(func).items():

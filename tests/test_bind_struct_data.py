@@ -1,27 +1,21 @@
-import sys
-from dataclasses import dataclass, field
 from textwrap import dedent
 from typing import Annotated
 
 import pytest
+import salix
 
 import cyclopts
 from cyclopts import Parameter
-from cyclopts.exceptions import (
-    ArgumentOrderError,
-    MissingArgumentError,
-    UnusedCliTokensError,
-)
+from cyclopts.exceptions import MissingArgumentError
 
 
-@dataclass
-class User:
+class User(salix.Struct):
     id: int
     name: str = "John Doe"
-    tastes: dict[str, int] = field(default_factory=dict)
+    tastes: dict[str, int] = {}
 
 
-def test_bind_dataclass(app, assert_parse_args, console):
+def test_bind_salix_struct(app, assert_parse_args, console):
     @app.command
     def foo(some_number: int, user: User):
         pass
@@ -43,7 +37,7 @@ def test_bind_dataclass(app, assert_parse_args, console):
     )
 
 
-def test_bind_dataclass_missing_all_arguments(app, assert_parse_args, console):
+def test_bind_salix_struct_missing_all_arguments(app, assert_parse_args, console):
     """We expect to see the first subargument (--user.id) in the error message,
     not the root "--user".
     """
@@ -67,14 +61,12 @@ def test_bind_dataclass_missing_all_arguments(app, assert_parse_args, console):
     assert actual == expected
 
 
-def test_bind_dataclass_recursive(app, assert_parse_args, console, normalize_trailing_whitespace):
-    @dataclass
-    class Wheel:
+def test_bind_salix_struct_recursive(app, assert_parse_args, console, normalize_trailing_whitespace):
+    class Wheel(salix.Struct):
         diameter: int
         "Diameter of wheel in inches."
 
-    @dataclass
-    class Engine:
+    class Engine(salix.Struct):
         cylinders: int
         "Number of cylinders the engine has."
 
@@ -84,15 +76,14 @@ def test_bind_dataclass_recursive(app, assert_parse_args, console, normalize_tra
         diesel: bool = False
         "If this engine consumes diesel, instead of gasoline."
 
-    @dataclass
-    class Car:
+    class Car(salix.Struct):
         name: str
         "The name/model of the car."
 
         mileage: float
         "How many miles the car has driven."
 
-        engine: Annotated[Engine, Parameter(name="*", group="Engine")] = field(kw_only=True)  # pyright: ignore
+        engine: Annotated[Engine, Parameter(name="*", group="Engine")]
         "The kind of engine the car is using."
 
         wheel: Wheel
@@ -132,7 +123,7 @@ def test_bind_dataclass_recursive(app, assert_parse_args, console, normalize_tra
 
     expected = dedent(
         """\
-        Usage: test_bind_dataclasses build --license-plate STR --car.name STR
+        Usage: test_bind_struct_data build --license-plate STR --car.name STR
         --car.mileage FLOAT --car.cylinders INT --car.horsepower FLOAT
         --car.wheel.diameter INT [OPTIONS]
 
@@ -161,19 +152,17 @@ def test_bind_dataclass_recursive(app, assert_parse_args, console, normalize_tra
     assert normalize_trailing_whitespace(actual) == expected
 
 
-def test_bind_dataclass_recursive_missing_arg(app, assert_parse_args, console):
+def test_bind_salix_struct_recursive_missing_arg(app, assert_parse_args, console):
     """The ``engine`` parameter itself is optional, but if specified it has 2 required fields."""
 
-    @dataclass
-    class Engine:
+    class Engine(salix.Struct):
         cylinders: int
         hp: float = 100
 
-    @dataclass
-    class Car:
+    class Car(salix.Struct):
         name: str
         mileage: float
-        engine: Annotated[Engine, Parameter(name="*", group="Engine")] = field(default_factory=lambda: Engine(8, 500))
+        engine: Annotated[Engine, Parameter(name="*", group="Engine")] = Engine(8, 500)
 
     @app.command
     def build(*, license_plate: str, car: Car):
@@ -223,9 +212,8 @@ def test_bind_dataclass_recursive_missing_arg(app, assert_parse_args, console):
         "--nickname='Bob Smith' --player.years-young=30",
     ],
 )
-def test_bind_dataclass_double_name_override_no_hyphen(app, assert_parse_args, console, cmd):
-    @dataclass
-    class User:
+def test_bind_salix_struct_double_name_override_no_hyphen(app, assert_parse_args, console, cmd):
+    class User(salix.Struct):
         # Beginning with "--" will completely override the parenting parameter name.
         name: Annotated[str, Parameter(name="--nickname")]
         # Not beginning with "--" will tack it on to the parenting parameter name.
@@ -246,10 +234,9 @@ def test_bind_dataclass_double_name_override_no_hyphen(app, assert_parse_args, c
         "--bar 200 100",
     ],
 )
-def test_bind_dataclass_positionally(app, assert_parse_args, cmd_str, console):
-    @dataclass
-    class Config:
-        a: int = field()  # intentionally empty field to make sure stuff doesn't assume this field has a default.
+def test_bind_salix_struct_positionally(app, assert_parse_args, cmd_str, console):
+    class Config(salix.Struct):
+        a: int
         """Docstring for a."""
 
         b: Annotated[int, Parameter(name="bar")] = 2
@@ -267,7 +254,7 @@ def test_bind_dataclass_positionally(app, assert_parse_args, cmd_str, console):
     actual = capture.get()
     expected = dedent(
         """\
-        Usage: test_bind_dataclasses A [ARGS]
+        Usage: test_bind_struct_data A [ARGS]
 
         ╭─ Commands ─────────────────────────────────────────────────────────╮
         │ --help (-h)  Display this message and exit.                        │
@@ -283,10 +270,9 @@ def test_bind_dataclass_positionally(app, assert_parse_args, cmd_str, console):
     assert actual == expected
 
 
-def test_bind_dataclass_default_factory_help(app, console):
-    @dataclass
-    class Config:
-        a: int = field(default_factory=lambda: 5)
+def test_bind_salix_struct_list_default_help(app, console):
+    class Config(salix.Struct):
+        a: int = 5
         """Docstring for a."""
 
     @app.default
@@ -299,7 +285,7 @@ def test_bind_dataclass_default_factory_help(app, console):
     actual = capture.get()
     expected = dedent(
         """\
-        Usage: test_bind_dataclasses [ARGS]
+        Usage: test_bind_struct_data [ARGS]
 
         ╭─ Commands ─────────────────────────────────────────────────────────╮
         │ --help (-h)  Display this message and exit.                        │
@@ -313,54 +299,14 @@ def test_bind_dataclass_default_factory_help(app, console):
     assert actual == expected
 
 
-def test_bind_dataclass_positionally_with_keyword_only_exception_no_default(app, assert_parse_args):
-    @dataclass
-    class Config:
-        a: int = 1
-        """Docstring for a."""
-
-        b: Annotated[int, Parameter(name="bar")] = 2
-        """This is the docstring for python parameter "b"."""
-
-        c: int = field(kw_only=True)  # pyright: ignore
-
-    @app.default
-    def my_default_command(foo, config: Annotated[Config, Parameter(name="*")], bar):
-        print(f"{config=}")
-
-    expected = ("v1", Config(100, 200, c=300), "v2")
-    assert_parse_args(my_default_command, "v1 100 200 v2 --c=300", *expected)
-    assert_parse_args(my_default_command, "--c=300 v1 100 200 v2", *expected)
-    with pytest.raises(MissingArgumentError):
-        app.parse_args("v1 100 200 300 v2", exit_on_error=False)
-    with pytest.raises(ArgumentOrderError):
-        app.parse_args("v1 --a=100 200 300 v2", exit_on_error=False)
-    with pytest.raises(ArgumentOrderError):
-        app.parse_args("v1 --bar=v2 100 200 --c=300", exit_on_error=False)
 
 
-def test_bind_dataclass_positionally_with_keyword_only_exception_with_default(app, assert_parse_args):
-    @dataclass
-    class Config:
-        a: int = 1
-        """Docstring for a."""
-
-        b: Annotated[int, Parameter(name="bar")] = 2
-        """This is the docstring for python parameter "b"."""
-
-        c: int = field(default=5, kw_only=True)  # pyright: ignore
-
-    @app.default
-    def my_default_command(config: Annotated[Config | None, Parameter(name="*")] = None):
-        print(f"{config=}")
-
-    with pytest.raises(UnusedCliTokensError):
-        app.parse_args("100 200 300", exit_on_error=False)
 
 
-def test_bind_dataclass_tuple_in_var_args(app, assert_parse_args):
-    @dataclass
-    class Square:
+
+
+def test_bind_salix_struct_tuple_in_var_args(app, assert_parse_args):
+    class Square(salix.Struct):
         center: tuple[float, float]
         side_length: float
 
@@ -371,12 +317,11 @@ def test_bind_dataclass_tuple_in_var_args(app, assert_parse_args):
     assert_parse_args(my_default_command, "10 20 30", Square(center=(10.0, 20.0), side_length=30.0))
 
 
-def test_bind_dataclass_with_alias_attribute(app, assert_parse_args):
+def test_bind_salix_struct_with_alias_attribute(app, assert_parse_args):
     """https://github.com/BrianPugh/cyclopts/issues/505"""
 
     @Parameter(name="*", negative=False)
-    @dataclass
-    class DataclassParameters:
+    class StructParameters(salix.Struct):
         with_alias: Annotated[
             bool,
             Parameter(
@@ -390,19 +335,18 @@ def test_bind_dataclass_with_alias_attribute(app, assert_parse_args):
         ] = False
 
     @app.default
-    def main(*, params: DataclassParameters | None = None) -> None:
+    def main(*, params: StructParameters | None = None) -> None:
         pass
 
-    assert_parse_args(main, "-a", params=DataclassParameters(with_alias=True, with_iterable=False))
-    assert_parse_args(main, "--with-alias", params=DataclassParameters(with_alias=True, with_iterable=False))
+    assert_parse_args(main, "-a", params=StructParameters(with_alias=True, with_iterable=False))
+    assert_parse_args(main, "--with-alias", params=StructParameters(with_alias=True, with_iterable=False))
 
 
-def test_bind_dataclass_star_parameter_better_error_message(app, console):
+def test_bind_salix_struct_star_parameter_better_error_message(app, console):
     """Test that Parameter(name="*") raises ValueError at app setup time when parameter has no default."""
 
     @Parameter(name="*")
-    @dataclass
-    class Foo:
+    class Foo(salix.Struct):
         bar: int = 12
 
     def cmd(foo: Foo):
@@ -420,11 +364,10 @@ def test_bind_dataclass_star_parameter_better_error_message(app, console):
         app.default(cmd)
 
 
-def test_bind_dataclass_with_varargs_consume_all(app, assert_parse_args):
-    """Test dataclass with *args field that consumes all remaining tokens."""
+def test_bind_salix_struct_with_varargs_consume_all(app, assert_parse_args):
+    """Test struct with *args field that consumes all remaining tokens."""
 
-    @dataclass
-    class FileProcessor:
+    class FileProcessor(salix.Struct):
         output: str
         inputs: tuple[str, ...]
 
@@ -439,44 +382,10 @@ def test_bind_dataclass_with_varargs_consume_all(app, assert_parse_args):
     )
 
 
-def test_dataclass_field_metadata_help(app, console):
-    """Test that dataclass Field metadata={"help": "..."} is used for help text."""
-
-    @dataclass
-    class Config:
-        name: str = field(default="default", metadata={"help": "Help from metadata."})
-
-        age: Annotated[int, Parameter(help="Parameter help takes precedence.")] = field(
-            default=25, metadata={"help": "This metadata help is ignored."}
-        )
-
-        count: int = field(default=10)
-        """Docstring for count."""
-
-        size: int = field(default=5, metadata={"help": "Metadata help overrides docstring."})
-        """This docstring is ignored."""
-
-    @app.default
-    def main(config: Config):
-        pass
-
-    with console.capture() as capture:
-        app("--help", console=console)
-
-    actual = capture.get()
-
-    assert "Help from metadata." in actual
-
-    assert "Parameter help takes precedence." in actual
-    assert "This metadata help is ignored." not in actual
-
-    assert "Docstring for count." in actual
-
-    assert "Metadata help overrides docstring." in actual
-    assert "This docstring is ignored." not in actual
 
 
-def test_bind_dataclass_direct_parent_match_issue_647(app, assert_parse_args):
+
+def test_bind_salix_struct_direct_parent_match_issue_647(app, assert_parse_args):
     """Test that --foo bar baz correctly converts to Foo(name="bar", age=25).
 
     Previously, parent arguments with children would match directly (e.g., --foo),
@@ -487,8 +396,7 @@ def test_bind_dataclass_direct_parent_match_issue_647(app, assert_parse_args):
     See: https://github.com/BrianPugh/cyclopts/issues/647
     """
 
-    @dataclass
-    class Foo:
+    class Foo(salix.Struct):
         name: str
         age: int
 
@@ -509,91 +417,24 @@ def test_bind_dataclass_direct_parent_match_issue_647(app, assert_parse_args):
     assert result == Foo(name="default", age=0)
 
 
-def test_bind_dataclass_kw_only_with_accepts_keys_false_issue_648(app, assert_parse_args):
-    """Test that kw_only dataclass with accepts_keys=False works.
-
-    When a dataclass is kw_only=True, it cannot accept positional arguments.
-    With accepts_keys=False, Cyclopts should still pass values as keyword arguments.
-
-    See: https://github.com/BrianPugh/cyclopts/issues/648
-    """
-
-    @dataclass(kw_only=True)
-    class Foo:
-        name: str
-
-    @app.default
-    def cmd(*, foo: Annotated[Foo, Parameter(accepts_keys=False)]) -> Foo:
-        return foo
-
-    assert_parse_args(cmd, "--foo Alice", foo=Foo(name="Alice"))
 
 
-@pytest.mark.skipif(sys.version_info < (3, 14), reason="Requires Python 3.14+ for field(doc=...)")
-def test_dataclass_field_doc_parameter_help(app, console):
-    """Test that Python 3.14's dataclass field(doc=...) parameter is used for help text."""
-
-    @dataclass
-    class Config:
-        name: str = field(default="default", doc="Help from doc parameter.")  # type: ignore[call-arg]
-
-        age: Annotated[int, Parameter(help="Parameter help takes precedence.")] = field(
-            default=25,
-            doc="This doc is ignored.",  # type: ignore[call-arg]
-        )
-
-        count: int = field(default=10, doc="Doc parameter help.")  # type: ignore[call-arg]
-
-        size: int = field(
-            default=5,
-            metadata={"help": "Metadata help takes precedence over doc."},
-            doc="This doc is ignored.",  # type: ignore[call-arg]
-        )
-
-        height: int = field(default=8)
-        """Docstring for height."""
-
-        width: int = field(default=12, doc="Doc parameter overrides docstring.")  # type: ignore[call-arg]
-        """This docstring is ignored."""
-
-    @app.default
-    def main(config: Config):
-        pass
-
-    with console.capture() as capture:
-        app("--help", console=console)
-
-    actual = capture.get()
-
-    assert "Help from doc parameter." in actual
-
-    assert "Parameter help takes precedence." in actual
-    assert "This doc is ignored." not in actual
-
-    assert "Doc parameter help." in actual
-
-    assert "Metadata help takes precedence" in actual
-
-    assert "Docstring for height." in actual
-
-    assert "Doc parameter overrides docstring." in actual
-    assert "This docstring is ignored." not in actual
 
 
-def test_dataclass_inheritance_simple(app, console):
-    """Test that docstrings from base dataclass are inherited by derived class.
+
+
+def test_salix_struct_inheritance_simple(app, console):
+    """Test that docstrings from base struct are inherited by derived class.
 
     Regression test for: https://github.com/BrianPugh/cyclopts/issues/691
     """
 
-    @dataclass
-    class BaseClass:
+    class BaseClass(salix.Struct):
         """Base class."""
 
         some_arg: int = 42
         """BaseClass.some_arg docstring."""
 
-    @dataclass
     class DerivedClass(BaseClass):
         """Derived class."""
 
@@ -614,24 +455,21 @@ def test_dataclass_inheritance_simple(app, console):
     assert "DerivedClass.some_other_arg docstring." in actual
 
 
-def test_dataclass_inheritance_multi_level(app, console):
+def test_salix_struct_inheritance_multi_level(app, console):
     """Test that docstrings propagate through multiple inheritance levels."""
 
-    @dataclass
-    class GrandparentClass:
+    class GrandparentClass(salix.Struct):
         """Grandparent class."""
 
         grandparent_field: int = 1
         """Grandparent field doc."""
 
-    @dataclass
     class ParentClass(GrandparentClass):
         """Parent class."""
 
         parent_field: int = 2
         """Parent field doc."""
 
-    @dataclass
     class ChildClass(ParentClass):
         """Child class."""
 
@@ -653,17 +491,15 @@ def test_dataclass_inheritance_multi_level(app, console):
     assert "Child field doc." in actual
 
 
-def test_dataclass_inheritance_override_docstring(app, console):
+def test_salix_struct_inheritance_override_docstring(app, console):
     """Test that derived class can override base class docstrings."""
 
-    @dataclass
-    class BaseClass:
+    class BaseClass(salix.Struct):
         """Base class."""
 
         shared_field: int = 1
         """Base docstring."""
 
-    @dataclass
     class DerivedClass(BaseClass):
         """Derived class."""
 
@@ -688,17 +524,15 @@ def test_dataclass_inheritance_override_docstring(app, console):
     assert "New field in derived." in actual
 
 
-def test_dataclass_inheritance_with_parameter_name_star(app, console, normalize_trailing_whitespace):
+def test_salix_struct_inheritance_with_parameter_name_star(app, console, normalize_trailing_whitespace):
     """Test inheritance with Parameter(name='*') works correctly."""
 
-    @dataclass
-    class BaseConfig:
+    class BaseConfig(salix.Struct):
         """Base configuration."""
 
         verbose: bool = False
         """Enable verbose output."""
 
-    @dataclass
     class ExtendedConfig(BaseConfig):
         """Extended configuration."""
 
@@ -719,17 +553,15 @@ def test_dataclass_inheritance_with_parameter_name_star(app, console, normalize_
     assert "Enable debug mode." in actual
 
 
-def test_dataclass_inheritance_no_docstrings_in_derived(app, console):
+def test_salix_struct_inheritance_no_docstrings_in_derived(app, console):
     """Test that base docstrings work even if derived class has no docstrings."""
 
-    @dataclass
-    class BaseClass:
+    class BaseClass(salix.Struct):
         """Base class."""
 
         base_field: int = 1
         """Base field documentation."""
 
-    @dataclass
     class DerivedClass(BaseClass):
         """Derived class."""
 
@@ -749,7 +581,7 @@ def test_dataclass_inheritance_no_docstrings_in_derived(app, console):
     assert "Base field documentation." in actual
 
 
-def test_bind_dataclass_with_parameter_alias_issue_696(app, assert_parse_args, console):
+def test_bind_salix_struct_with_parameter_alias_issue_696(app, assert_parse_args, console):
     """Test that user class with parameter alias generates correct arguments.
 
     https://github.com/BrianPugh/cyclopts/issues/696
@@ -762,8 +594,7 @@ def test_bind_dataclass_with_parameter_alias_issue_696(app, assert_parse_args, c
     - Should NOT generate: --source.from, --from.from
     """
 
-    @dataclass
-    class Source:
+    class Source(salix.Struct):
         server: str
         port: int = 8080
 
@@ -807,8 +638,8 @@ def test_bind_dataclass_with_parameter_alias_issue_696(app, assert_parse_args, c
     )
 
 
-def test_bind_dataclass_default_parameter_consume_multiple_propagates(assert_parse_args):
-    """``default_parameter`` settings should propagate to inner dataclass fields.
+def test_bind_salix_struct_default_parameter_consume_multiple_propagates(assert_parse_args):
+    """``default_parameter`` settings should propagate to inner struct fields.
 
     Previously ``name_transform`` propagated correctly, but ``consume_multiple`` did
     not unless the inner class field was explicitly annotated.
@@ -820,8 +651,7 @@ def test_bind_dataclass_default_parameter_consume_multiple_propagates(assert_par
         default_parameter=Parameter(consume_multiple=True),
     )
 
-    @dataclass
-    class Inner:
+    class Inner(salix.Struct):
         names: list[str]
 
     @app.command
@@ -838,20 +668,14 @@ def test_bind_dataclass_default_parameter_consume_multiple_propagates(assert_par
     assert actual_bind.kwargs == {"inner": Inner(names=["name1", "name2"])}
 
 
-def test_bind_dataclass_accepts_keys_default_factory(app, assert_parse_args):
-    """Explicit ``accepts_keys=True`` on a dataclass with a ``default_factory`` field.
-
-    The field was registered twice — once via ``_dataclass_field_infos`` (factory
-    resolved) and once via ``signature_parameters(hint.__init__)`` (raw
-    ``_HAS_DEFAULT_FACTORY`` sentinel) — and the mismatch raised a bare
-    ``NotImplementedError``.
+def test_bind_salix_struct_accepts_keys_list_default(app, assert_parse_args):
+    """Explicit ``accepts_keys=True`` on a struct with a list default field.
 
     https://github.com/BrianPugh/cyclopts/issues/857
     """
 
-    @dataclass
-    class Config:
-        numbers: list[int] = field(default_factory=lambda: [1, 2, 3])
+    class Config(salix.Struct):
+        numbers: list[int] = [1, 2, 3]
 
     @app.command
     def cmd(config: Annotated[Config | None, Parameter(accepts_keys=True)] = None):

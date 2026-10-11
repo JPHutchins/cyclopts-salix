@@ -10,7 +10,7 @@ from contextlib import suppress
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, get_args, get_origin
 
-from attrs import define, field
+from salix import Struct
 
 from cyclopts._convert import (
     _validate_json_extra_keys,
@@ -24,12 +24,10 @@ from cyclopts.annotations import (
     contains_hint,
     get_annotated_discriminator,
     get_hint_name,
-    is_attrs,
-    is_dataclass,
     is_enum_flag,
-    is_namedtuple,
     is_nonetype,
     is_pydantic,
+    is_salix_struct,
     is_typeddict,
     is_union,
     resolve,
@@ -46,9 +44,9 @@ from cyclopts.exceptions import (
 )
 from cyclopts.field_info import (
     FieldInfo,
-    _attrs_field_infos,
     _generic_class_field_infos,
     _pydantic_field_infos,
+    _struct_field_infos,
     _typed_dict_field_infos,
     get_field_infos,
     signature_parameters,
@@ -68,41 +66,40 @@ if TYPE_CHECKING:
     from cyclopts.argument._collection import ArgumentCollection
 
 
-@define(kw_only=True)
-class Argument:
+class Argument(Struct, frozen=False):
     """Encapsulates functionality and additional contextual information for parsing a parameter.
 
     An argument is defined as anything that would have its own entry in the help page.
     """
 
-    tokens: list[Token] = field(factory=list)
+    tokens: list[Token] = []
     """
     List of :class:`.Token` parsed from various sources.
     Do not directly mutate; see :meth:`append`.
     """
 
-    field_info: FieldInfo = field(factory=FieldInfo)
+    field_info: FieldInfo = FieldInfo()
     """
     Additional information about the parameter from surrounding python syntax.
     """
 
-    parameter: Parameter = field(factory=Parameter)
+    parameter: Parameter = Parameter()
     """
     Fully resolved user-provided :class:`.Parameter`.
     """
 
-    hint: Any = field(default=str, converter=resolve)
+    hint: Any = str
     """
     The type hint for this argument; may be different from :attr:`.FieldInfo.annotation`.
     """
 
-    index: int | None = field(default=None)
+    index: int | None = None
     """
     Associated python positional index for argument.
     If ``None``, then cannot be assigned positionally.
     """
 
-    keys: tuple[str, ...] = field(default=())
+    keys: tuple[str, ...] = ()
     """
     **Python** keys that lead to this leaf.
 
@@ -115,14 +112,13 @@ class Argument:
     .. code-block:: python
 
         from cyclopts import App, Parameter
-        from dataclasses import dataclass
+        from salix import Struct
         from typing import Annotated
 
         app = App()
 
 
-        @dataclass
-        class User:
+        class User(Struct):
             id: int
             name: Annotated[str, Parameter(name="--fullname")]
 
@@ -142,33 +138,33 @@ class Argument:
         name: --fullname       hint: <class 'str'>    keys: ('name',)
     """
 
-    _value: Any = field(alias="value", default=UNSET)
+    _value: Any = UNSET
     """
     Converted value from last :meth:`convert` call.
     This value may be stale if fields have changed since last :meth:`convert` call.
     :class:`.UNSET` if :meth:`convert` has not yet been called with tokens.
     """
 
-    _accepts_keywords: bool = field(default=False, init=False, repr=False)
+    _accepts_keywords: bool = False
 
-    _default: Any = field(default=None, init=False, repr=False)
-    _lookup: dict[str, FieldInfo] = field(factory=dict, init=False, repr=False)
+    _default: Any = None
+    _lookup: dict[str, FieldInfo] = {}
 
-    children: "ArgumentCollection" = field(init=False, repr=False)
+    children: "ArgumentCollection" = None  # type: ignore[assignment]
     """
     Collection of other :class:`Argument` that eventually culminate into the python variable represented by :attr:`field_info`.
     """
 
-    _marked_converted: bool = field(default=False, init=False, repr=False)
-    _mark_converted_override: bool = field(default=False, init=False, repr=False)
+    _marked_converted: bool = False
+    _mark_converted_override: bool = False
 
-    _missing_keys_checker: Callable | None = field(default=None, init=False, repr=False)
+    _missing_keys_checker: Callable | None = None
 
-    _internal_converter: Callable | None = field(default=None, init=False, repr=False)
+    _internal_converter: Callable | None = None
 
-    _enum_flag_type: Any | None = field(default=None, init=False, repr=False)
+    _enum_flag_type: Any | None = None
 
-    _union_branches: "list[tuple[Any, dict[str, FieldInfo]]]" = field(factory=list, init=False, repr=False)
+    _union_branches: "list[tuple[Any, dict[str, FieldInfo]]]" = []
     """Per-branch ``(member_type, field_infos)`` when :attr:`hint` is a ``Union`` of 2+ keyword-accepting types.
 
     Empty for non-unions and single-composite optionals (e.g. ``Foo | None``). Drives
@@ -177,12 +173,18 @@ class Argument:
     See :meth:`_active_branch_required_keys` and :meth:`_resolve_union_member`.
     """
 
-    def __attrs_post_init__(self):
+    def __repr__(self) -> str:
+        return (
+            f"Argument(tokens={self.tokens!r}, field_info={self.field_info!r}, parameter={self.parameter!r}, "
+            f"hint={self.hint!r}, index={self.index!r}, keys={self.keys!r}, value={self._value!r})"
+        )
+
+    def __post_init__(self):
         from cyclopts.argument._collection import ArgumentCollection
 
         self.children = ArgumentCollection()
 
-        hint = resolve(self.hint)
+        hint = self.hint = resolve(self.hint)
         hints = get_args(hint) if is_union(hint) else (hint,)
 
         if self.parameter.count:
@@ -237,18 +239,8 @@ class Argument:
                 self._missing_keys_checker = missing_keys_factory(_typed_dict_field_infos)
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
-            elif is_dataclass(hint):
-                self._missing_keys_checker = missing_keys_factory(_generic_class_field_infos)
-                self._accepts_keywords = True
-                self._update_lookup(field_infos)
-            elif is_namedtuple(hint):
-                self._missing_keys_checker = missing_keys_factory(_generic_class_field_infos)
-                self._accepts_keywords = True
-                if not hasattr(hint, "__annotations__"):
-                    raise ValueError("Cyclopts cannot handle collections.namedtuple without type annotations.")
-                self._update_lookup(field_infos)
-            elif is_attrs(hint):
-                self._missing_keys_checker = missing_keys_factory(_attrs_field_infos)
+            elif is_salix_struct(hint):
+                self._missing_keys_checker = missing_keys_factory(_struct_field_infos)
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
             elif is_pydantic(hint):
@@ -304,8 +296,10 @@ class Argument:
                 if existing_field_info == field_info:
                     pass
                 elif discriminator and discriminator in field_info.names and discriminator in existing_field_info.names:
-                    existing_field_info.annotation = Literal[existing_field_info.annotation, field_info.annotation]
-                    existing_field_info.default = FieldInfo.empty
+                    self._lookup[key] = existing_field_info.evolve(
+                        annotation=Literal[existing_field_info.annotation, field_info.annotation],
+                        default=FieldInfo.empty,
+                    )
                 else:
                     raise NotImplementedError
             else:
@@ -465,8 +459,8 @@ class Argument:
         Walks the type hint segment-by-segment:
 
         * Dynamic ``dict`` keys pass through unchanged (advance to the value type).
-        * Segments addressing a structured type (pydantic / dataclass / attrs /
-          TypedDict / NamedTuple) are looked up in a ``{name_transform(name): name}``
+        * Segments addressing a structured type (pydantic / salix Struct /
+          TypedDict) are looked up in a ``{name_transform(name): name}``
           map built from the type's field_infos; on hit, the segment is replaced
           with the canonical name and the walk advances to that field's annotation.
         * On miss or when the hint is unwalkable (plain scalar, unresolved forward

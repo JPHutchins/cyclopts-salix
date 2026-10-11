@@ -26,7 +26,7 @@ def argument_collection_1():
             Argument(
                 tokens=[Token(keyword="--foo", value="100", source="test")],
                 parameter=Parameter(name="--foo"),
-                value=100,
+                _value=100,
             ),
             Argument(parameter=Parameter(name="--bar")),
             Argument(parameter=Parameter(name="--baz")),
@@ -41,12 +41,12 @@ def argument_collection_2():
             Argument(
                 tokens=[Token(keyword="--foo", value="100", source="test")],
                 parameter=Parameter(name="--foo"),
-                value=100,
+                _value=100,
             ),
             Argument(
                 tokens=[Token(keyword="--bar", value="200", source="test")],
                 parameter=Parameter(name="--bar"),
-                value=200,
+                _value=200,
             ),
             Argument(parameter=Parameter(name="--baz")),
         ]
@@ -60,17 +60,17 @@ def argument_collection_3():
             Argument(
                 tokens=[Token(keyword="--foo", value="100", source="test")],
                 parameter=Parameter(name="--foo"),
-                value=100,
+                _value=100,
             ),
             Argument(
                 tokens=[Token(keyword="--bar", value="200", source="test")],
                 parameter=Parameter(name="--bar"),
-                value=200,
+                _value=200,
             ),
             Argument(
                 tokens=[Token(keyword="--baz", value="300", source="test")],
                 parameter=Parameter(name="--baz"),
-                value=300,
+                _value=300,
             ),
         ]
     )

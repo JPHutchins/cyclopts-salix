@@ -10,7 +10,7 @@ from typing import (
     Union,
 )
 
-from attrs import field
+from salix import Struct, set_field
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -21,7 +21,6 @@ from cyclopts.utils import (
     UNSET,
     Sentinel,
     SortHelper,
-    frozen,
     help_formatter_converter,
     is_iterable,
     resolve_callables,
@@ -35,7 +34,7 @@ if TYPE_CHECKING:
     from cyclopts.parameter import Parameter
 
 
-def _group_default_parameter_must_be_none(instance, attribute, value: Optional["Parameter"]):
+def _group_default_parameter_must_be_none(value: Optional["Parameter"]):
     if value is None:
         return
 
@@ -70,9 +69,8 @@ def _group_name_converter(val: str):
     return val if val else object()
 
 
-@frozen
-class Group:
-    _name: str = field(default="", alias="name", converter=_group_name_converter)  # pyright: ignore reportAssignmentType
+class Group(Struct, frozen=True):
+    _name: str = ""
     """
     Name of the group.
 
@@ -85,32 +83,38 @@ class Group:
 
     help: str = ""
 
-    # All below parameters are keyword-only
-    _show: bool | None = field(default=None, alias="show", kw_only=True)
+    _show: bool | None = None
 
-    _sort_key: Any = field(
-        default=None,
-        alias="sort_key",
-        converter=sort_key_converter,
-        kw_only=True,
-    )
+    _sort_key: Any = None
 
     # This can ONLY ever be a Tuple[Callable, ...]
-    validator: None | Callable[["ArgumentCollection"], Any] | Iterable[Callable[["ArgumentCollection"], Any]] = field(
-        default=None,
-        converter=_group_validator_converter,
-        kw_only=True,
-    )
+    validator: None | Callable[["ArgumentCollection"], Any] | Iterable[Callable[["ArgumentCollection"], Any]] = None
 
-    default_parameter: Optional["Parameter"] = field(
-        default=None,
-        validator=_group_default_parameter_must_be_none,
-        kw_only=True,
-    )
+    default_parameter: Optional["Parameter"] = None
 
-    help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = field(
-        default=None, converter=help_formatter_converter, kw_only=True
-    )
+    help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = None
+
+    def __init__(
+        self,
+        name: str = "",
+        help: str = "",
+        *,
+        show: bool | None = None,
+        sort_key: Any = None,
+        validator: (
+            None | Callable[["ArgumentCollection"], Any] | Iterable[Callable[["ArgumentCollection"], Any]]
+        ) = None,
+        default_parameter: Optional["Parameter"] = None,
+        help_formatter: Union[None, Literal["default", "plain"], "HelpFormatter"] = None,
+    ) -> None:
+        _group_default_parameter_must_be_none(default_parameter)
+        set_field(self, "_name", _group_name_converter(name))
+        set_field(self, "help", help)
+        set_field(self, "_show", show)
+        set_field(self, "_sort_key", sort_key_converter(sort_key))
+        set_field(self, "validator", _group_validator_converter(validator))
+        set_field(self, "default_parameter", default_parameter)
+        set_field(self, "help_formatter", help_formatter_converter(help_formatter))
 
     @property
     def name(self) -> str:

@@ -5,7 +5,7 @@ from enum import Enum
 from itertools import chain
 from typing import TYPE_CHECKING, Any, Literal, Optional, get_args, get_origin
 
-from attrs import define, field
+from salix import Struct
 
 import cyclopts.utils
 from cyclopts.annotations import get_hint_name
@@ -61,6 +61,12 @@ def _get_function_info(func):
     return inspect.getsourcefile(func), inspect.getsourcelines(func)[1]
 
 
+def _require_fields(instance: Any, *names: str) -> None:
+    for name in names:
+        if getattr(instance, name) is None:
+            raise TypeError(f"{type(instance).__name__}() missing required keyword argument: {name!r}")
+
+
 class CommandCollisionError(Exception):
     """A command with the same name has already been registered to the app."""
 
@@ -72,8 +78,7 @@ class DocstringError(Exception):
     """The docstring either has a syntax error, or inconsistency with the function signature."""
 
 
-@define  # (kw_only=True)
-class CycloptsError(Exception):
+class CycloptsError(Exception, Struct, frozen=False, eq=False):
     """Root exception for runtime errors.
 
     As CycloptsErrors bubble up the Cyclopts call-stack, more information is added to it.
@@ -142,7 +147,7 @@ class CycloptsError(Exception):
     The Cyclopts application itself.
     """
 
-    console: Optional["Console"] = field(default=None, kw_only=True)
+    console: Optional["Console"] = None
     """:class:`~rich.console.Console` to display runtime errors."""
 
     def _resolved_msg(self) -> "Text":
@@ -207,13 +212,11 @@ class CycloptsError(Exception):
         return out
 
 
-@define(kw_only=True)
-class CombinedShortOptionError(CycloptsError):
+class CombinedShortOptionError(CycloptsError, frozen=False, eq=False):
     """Cannot combine short, token-consuming options with short flags."""
 
 
-@define(kw_only=True)
-class ValidationError(CycloptsError):
+class ValidationError(CycloptsError, frozen=False, eq=False):
     """Validator function raised an exception."""
 
     exception_message: str = ""
@@ -267,18 +270,20 @@ class ValidationError(CycloptsError):
             yield self.exception_message, ""
 
 
-@define(kw_only=True)
-class UnknownOptionError(CycloptsError):
+class UnknownOptionError(CycloptsError, frozen=False, eq=False):
     """Unknown/unregistered option provided by the cli.
 
     A nearest-neighbor parameter suggestion may be printed.
     """
 
-    token: Token
+    token: Token = None  # type: ignore[assignment]
     """Token without a matching parameter."""
 
-    argument_collection: "ArgumentCollection"
+    argument_collection: "ArgumentCollection" = None  # type: ignore[assignment]
     """Argument collection of plausible options."""
+
+    def __post_init__(self) -> None:
+        _require_fields(self, "token", "argument_collection")
 
     def _segments(self) -> "Iterator[tuple[str, str] | Text]":
         value = self.token.keyword or self.token.value
@@ -310,8 +315,7 @@ class UnknownOptionError(CycloptsError):
                 yield "?", ""
 
 
-@define(kw_only=True)
-class CoercionError(CycloptsError):
+class CoercionError(CycloptsError, frozen=False, eq=False):
     """There was an error performing automatic type coercion."""
 
     token: Optional["Token"] = None
@@ -509,8 +513,7 @@ class UnknownCommandError(CycloptsError):
             yield ".", ""
 
 
-@define(kw_only=True)
-class UnusedCliTokensError(CycloptsError):
+class UnusedCliTokensError(CycloptsError, frozen=False, eq=False):
     """Not all CLI tokens were used as expected."""
 
     def _segments(self) -> "Iterator[tuple[str, str] | Text]":
@@ -519,11 +522,10 @@ class UnusedCliTokensError(CycloptsError):
         yield f"Unused Tokens: {self.unused_tokens}.", ""
 
 
-@define(kw_only=True)
-class MissingArgumentError(CycloptsError):
+class MissingArgumentError(CycloptsError, frozen=False, eq=False):
     """A required argument was not provided."""
 
-    tokens_so_far: list[str] = field(factory=list)
+    tokens_so_far: list[str] = []
     """If the matched parameter requires multiple tokens, these are the ones we have parsed so far."""
 
     keyword: str | None = None
@@ -583,8 +585,7 @@ class MissingArgumentError(CycloptsError):
             yield f"  Parsed: {self.tokens_so_far}.", ""
 
 
-@define(kw_only=True)
-class ConsumeMultipleError(MissingArgumentError):
+class ConsumeMultipleError(MissingArgumentError, frozen=False, eq=False):
     """The number of values provided doesn't meet consume_multiple constraints."""
 
     min_required: int = 0
@@ -616,8 +617,7 @@ class ConsumeMultipleError(MissingArgumentError):
         yield f" {constraint} {noun}. Got {self.actual_count}.", ""
 
 
-@define(kw_only=True)
-class RequiresEqualsError(CycloptsError):
+class RequiresEqualsError(CycloptsError, frozen=False, eq=False):
     """A long option requires ``=`` to assign a value (e.g., ``--option=value``)."""
 
     keyword: str | None = None
@@ -634,12 +634,14 @@ class RequiresEqualsError(CycloptsError):
         yield "=VALUE.", ""
 
 
-@define(kw_only=True)
-class RepeatArgumentError(CycloptsError):
+class RepeatArgumentError(CycloptsError, frozen=False, eq=False):
     """The same parameter has erroneously been specified multiple times."""
 
-    token: "Token"
+    token: "Token" = None  # type: ignore[assignment]
     """The repeated token."""
+
+    def __post_init__(self) -> None:
+        _require_fields(self, "token")
 
     def _segments(self) -> "Iterator[tuple[str, str] | Text]":
         if self.msg is not None:
@@ -654,12 +656,14 @@ class RepeatArgumentError(CycloptsError):
         yield " specified multiple times.", ""
 
 
-@define(kw_only=True)
-class ArgumentOrderError(CycloptsError):
+class ArgumentOrderError(CycloptsError, frozen=False, eq=False):
     """Cannot supply a POSITIONAL_OR_KEYWORD argument with a keyword, and then a later POSITIONAL_OR_KEYWORD argument positionally."""
 
-    token: str
-    prior_positional_or_keyword_supplied_as_keyword_arguments: list["Argument"]
+    token: str = None  # type: ignore[assignment]
+    prior_positional_or_keyword_supplied_as_keyword_arguments: list["Argument"] = None  # type: ignore[assignment]
+
+    def __post_init__(self) -> None:
+        _require_fields(self, "token", "prior_positional_or_keyword_supplied_as_keyword_arguments")
 
     def _segments(self) -> "Iterator[tuple[str, str] | Text]":
         assert self.argument is not None
@@ -684,8 +688,7 @@ class ArgumentOrderError(CycloptsError):
         yield ".", ""
 
 
-@define(kw_only=True)
-class MixedArgumentError(CycloptsError):
+class MixedArgumentError(CycloptsError, frozen=False, eq=False):
     """Cannot supply keywords and non-keywords to the same argument."""
 
     def _segments(self) -> "Iterator[tuple[str, str] | Text]":

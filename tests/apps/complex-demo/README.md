@@ -6,10 +6,9 @@ covers all known edge cases for documentation generation with both MkDocs and Sp
 ## Features Tested
 
 ### Type System
-- **Dataclass parameter flattening** - `@Parameter(name="*")` with frozen and mutable dataclasses
-- **Nested dataclasses** - Dataclass containing other dataclasses
+- **Struct parameter flattening** - `@Parameter(name="*")` with frozen and mutable structs
+- **Nested structs** - Struct containing other structs
 - **Pydantic models** - BaseModel subclasses (if pydantic installed)
-- **attrs classes** - @attrs.define classes (if attrs installed)
 - **Complex union types** - `int | Literal["auto"]`, `int | Literal["high", "medium", "low"]`
 - **Enums and Flags** - Standard enum.Enum and enum.Flag types
 - **Optional types** - `Path | None = None`
@@ -47,7 +46,7 @@ complex-demo/
 │   └── cli/
 │       ├── index.md        # Full reference with TOC
 │       ├── admin.md        # Nested commands, filtering
-│       ├── data.md         # Dataclass flattening
+│       ├── data.md         # Struct flattening
 │       ├── server.md       # Pydantic models
 │       ├── utilities.md    # Various features
 │       └── full.md         # Flattened + hidden commands
@@ -102,9 +101,9 @@ This demo replicates patterns found in darts-nextgen:
 
 | Pattern | darts-nextgen | complex-demo |
 |---------|---------------|--------------|
-| `@Parameter(name="*")` on dataclass | ✅ | ✅ |
-| Frozen dataclasses | ✅ | ✅ |
-| Nested dataclasses | ✅ | ✅ |
+| `@Parameter(name="*")` on struct | ✅ | ✅ |
+| Frozen structs | ✅ | ✅ |
+| Nested structs | ✅ | ✅ |
 | `Group.create_ordered()` | ✅ | ✅ |
 | `meta.default` interceptor | ✅ | ✅ |
 | Count parameters (`-v`, `-vv`) | ✅ | ✅ |
@@ -115,7 +114,6 @@ This demo replicates patterns found in darts-nextgen:
 
 Additional patterns in complex-demo:
 - Pydantic model support
-- attrs class support
 - enum.Flag types
 - Multiple docstring format examples
 - Hidden command/parameter testing

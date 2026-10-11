@@ -1,17 +1,16 @@
-"""Test TOML configuration with lists of dataclasses and TypedDict.
+"""Test TOML configuration with lists of structs and TypedDict.
 
 This addresses GitHub issue #507 for TOML config files.
 """
 
-from dataclasses import dataclass
 from textwrap import dedent
 from typing import Literal, TypedDict
 
 from cyclopts.config import Toml
+from salix import Struct
 
 
-@dataclass
-class User:
+class User(Struct):
     name: str
     age: int
     region: Literal["us", "ca"] = "us"
@@ -22,8 +21,8 @@ class Config(TypedDict):
     value: int
 
 
-def test_toml_list_of_dataclasses(app, tmp_path, assert_parse_args):
-    """Test list of dataclasses from TOML config."""
+def test_toml_list_of_structs(app, tmp_path, assert_parse_args):
+    """Test list of structs from TOML config."""
     config_fn = tmp_path / "config.toml"
 
     config_fn.write_text(
@@ -42,7 +41,7 @@ def test_toml_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -52,8 +51,8 @@ def test_toml_list_of_dataclasses(app, tmp_path, assert_parse_args):
     assert_parse_args(main, "", [User("alice", 22, "us"), User("bob", 33, "ca")])
 
 
-def test_toml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_args):
-    """Test that CLI arguments override TOML config for list of dataclasses."""
+def test_toml_list_of_structs_with_cli_override(app, tmp_path, assert_parse_args):
+    """Test that CLI arguments override TOML config for list of structs."""
     config_fn = tmp_path / "config.toml"
 
     config_fn.write_text(
@@ -67,7 +66,7 @@ def test_toml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -81,8 +80,8 @@ def test_toml_list_of_dataclasses_with_cli_override(app, tmp_path, assert_parse_
     )
 
 
-def test_toml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
-    """Test empty list of dataclasses from TOML."""
+def test_toml_empty_list_of_structs(app, tmp_path, assert_parse_args):
+    """Test empty list of structs from TOML."""
     config_fn = tmp_path / "config.toml"
 
     config_fn.write_text(
@@ -93,7 +92,7 @@ def test_toml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User] = None):  # pyright: ignore
@@ -102,8 +101,8 @@ def test_toml_empty_list_of_dataclasses(app, tmp_path, assert_parse_args):
     assert_parse_args(main, "", [])
 
 
-def test_toml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
-    """Test single dataclass item in TOML list."""
+def test_toml_single_struct_in_list(app, tmp_path, assert_parse_args):
+    """Test single struct item in TOML list."""
     config_fn = tmp_path / "config.toml"
 
     config_fn.write_text(
@@ -117,7 +116,7 @@ def test_toml_single_dataclass_in_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):
@@ -148,7 +147,7 @@ def test_toml_list_of_typeddict(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(configs: list[Config]):
@@ -165,17 +164,15 @@ def test_toml_list_of_typeddict(app, tmp_path, assert_parse_args):
     )
 
 
-def test_toml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
-    """Test nested dataclass structure from TOML."""
+def test_toml_nested_struct_structure(app, tmp_path, assert_parse_args):
+    """Test nested struct structure from TOML."""
 
-    @dataclass
-    class Address:
+    class Address(Struct):
         street: str
         city: str
         country: str = "US"
 
-    @dataclass
-    class Person:
+    class Person(Struct):
         name: str
         age: int
         address: Address
@@ -206,7 +203,7 @@ def test_toml_nested_dataclass_structure(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(people: list[Person]):
@@ -235,7 +232,7 @@ def test_toml_mixed_config_and_cli(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User], verbose: bool = False):
@@ -246,7 +243,7 @@ def test_toml_mixed_config_and_cli(app, tmp_path, assert_parse_args):
 
 
 def test_toml_inline_table_list(app, tmp_path, assert_parse_args):
-    """Test TOML inline table syntax for list of dataclasses."""
+    """Test TOML inline table syntax for list of structs."""
     config_fn = tmp_path / "config.toml"
 
     config_fn.write_text(
@@ -260,7 +257,7 @@ def test_toml_inline_table_list(app, tmp_path, assert_parse_args):
         )
     )
 
-    app.config = Toml(config_fn)
+    app.config = Toml(path=config_fn)
 
     @app.default
     def main(users: list[User]):

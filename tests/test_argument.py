@@ -1,9 +1,8 @@
 import inspect
-from collections import namedtuple
-from dataclasses import dataclass
 from typing import Annotated, Dict, Optional, TypedDict, Union  # noqa: UP035
 
 import pytest
+from salix import Struct
 
 from cyclopts.annotations import is_typeddict
 from cyclopts.argument import (
@@ -17,7 +16,8 @@ from cyclopts.parameter import Parameter
 from cyclopts.token import Token
 from cyclopts.utils import UNSET
 
-Case = namedtuple("TestCase", ["args", "expected"])
+def Case(args, expected):
+    return pytest.param(args, expected)
 
 
 def test_argument_collection_no_annotation_no_default():
@@ -465,8 +465,7 @@ def test_filter_by_missing_partial_composite():
     """The headline case: a partially-supplied optional composite reports its absent field."""
 
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
@@ -481,8 +480,7 @@ def test_filter_by_missing_partial_composite():
 
 def test_filter_by_missing_optional_composite_untouched():
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
@@ -496,8 +494,7 @@ def test_filter_by_missing_optional_composite_untouched():
 
 def test_filter_by_missing_required_composite_omitted():
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
@@ -511,8 +508,7 @@ def test_filter_by_missing_required_composite_omitted():
 
 def test_filter_by_missing_defaulted_subfield_excluded():
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int = 5
 
@@ -526,13 +522,11 @@ def test_filter_by_missing_defaulted_subfield_excluded():
 
 
 def test_filter_by_missing_nested_composite():
-    @dataclass
-    class Inner:
+    class Inner(Struct):
         a: int
         b: int
 
-    @dataclass
-    class Outer:
+    class Outer(Struct):
         inner: Inner
         name: str
 
@@ -574,23 +568,6 @@ def test_filter_by_missing_pydantic():
     assert _names(collection.filter_by(missing=True)) == ["--end"]
 
 
-def test_filter_by_missing_attrs():
-    import attrs
-
-    @Parameter(name="*")
-    @attrs.define
-    class TimeRange:
-        start: int
-        end: int
-
-    def cli(*, time_range: Optional[TimeRange] = None):
-        pass
-
-    collection = ArgumentCollection._from_callable(cli)
-    collection["--start"].append(Token(keyword="--start", value="1", source="test"))
-    assert _names(collection.filter_by(missing=True)) == ["--end"]
-
-
 def test_filter_by_missing_false_is_complement():
     def foo(a: int, b: int = 5):
         pass
@@ -604,8 +581,7 @@ def test_filter_by_missing_false_is_complement():
 
 def test_filter_by_missing_composes_with_other_filters():
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
@@ -628,8 +604,7 @@ def test_filter_by_missing_end_to_end_prompt():
     from cyclopts import App
 
     @Parameter(name="*")
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
@@ -659,13 +634,11 @@ def test_filter_by_missing_end_to_end_prompt():
 def test_filter_by_missing_multi_branch_union_active_branch():
     """Supplying one Union member's field must not mark a sibling member's fields missing."""
 
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
-    @dataclass
-    class Live:
+    class Live(Struct):
         live: bool
 
     def cli(*, time_period: Union[TimeRange, Live]):
@@ -689,14 +662,12 @@ def test_filter_by_missing_multi_branch_union_untouched_required():
     Only the first branch's *required* fields are reported; its optional field (``step``) is not.
     """
 
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
         step: int = 1
 
-    @dataclass
-    class Live:
+    class Live(Struct):
         live: bool
 
     def cli(*, time_period: Union[TimeRange, Live]):
@@ -709,13 +680,11 @@ def test_filter_by_missing_multi_branch_union_untouched_required():
 def test_filter_by_missing_multi_branch_union_untouched_optional():
     """A fully-omitted *optional* Union uses its default, so it reports nothing."""
 
-    @dataclass
-    class TimeRange:
+    class TimeRange(Struct):
         start: int
         end: int
 
-    @dataclass
-    class Live:
+    class Live(Struct):
         live: bool
 
     def cli(*, time_period: Optional[Union[TimeRange, Live]] = None):
@@ -1028,7 +997,7 @@ def test_argument_collection_contains_with_filtered():
             Argument(
                 tokens=[Token(keyword="--foo", value="100", source="test")],
                 parameter=Parameter(name="--foo"),
-                value=100,
+                _value=100,
             ),
             Argument(
                 parameter=Parameter(name="--bar"),
@@ -1036,7 +1005,7 @@ def test_argument_collection_contains_with_filtered():
             Argument(
                 tokens=[Token(keyword="--baz", value="text", source="test")],
                 parameter=Parameter(name="--baz"),
-                value="text",
+                _value="text",
             ),
         ]
     )
@@ -1054,11 +1023,8 @@ def test_argument_collection_contains_with_filtered():
 
 
 def test_argument_collection_contains_with_keys():
-    """Test that 'in' operator works with nested argument keys (dataclass fields)."""
-    from dataclasses import dataclass
-
-    @dataclass
-    class Config:
+    """Test that 'in' operator works with nested argument keys (struct fields)."""
+    class Config(Struct):
         host: str
         port: int
 

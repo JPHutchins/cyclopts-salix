@@ -6,7 +6,7 @@ from enum import Enum, Flag
 from types import UnionType
 from typing import Annotated, Any, Union, get_args, get_origin
 
-import attrs
+import salix
 
 from cyclopts.utils import is_class_and_subclass
 
@@ -67,16 +67,8 @@ def is_pydantic_secret(hint) -> bool:
     )
 
 
-def is_dataclass(hint) -> bool:
-    return hasattr(hint, "__dataclass_fields__")
-
-
-def is_namedtuple(hint) -> bool:
-    return is_class_and_subclass(hint, tuple) and hasattr(hint, "_fields")
-
-
-def is_attrs(hint) -> bool:
-    return attrs.has(hint)
+def is_salix_struct(hint) -> bool:
+    return is_class_and_subclass(hint, salix.Struct)
 
 
 def is_enum(hint) -> bool:

@@ -1,6 +1,5 @@
 """To prevent circular dependencies, this module should never import anything else from Cyclopts."""
 
-import functools
 import importlib
 import inspect
 import re
@@ -9,22 +8,16 @@ from contextlib import suppress
 from operator import itemgetter
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
-from attrs import field, frozen
+from salix import Struct, set_field
 
 T = TypeVar("T")
 
-# https://threeofwands.com/attra-iv-zero-overhead-frozen-attrs-classes/
 if TYPE_CHECKING:
     from json import JSONDecodeError
 
-    from attrs import frozen
     from rich.console import Console
 
     from cyclopts.help.protocols import HelpFormatter
-else:
-    from attrs import define
-
-    frozen = functools.partial(define, unsafe_hash=True)
 
 from sys import stdlib_module_names
 
@@ -44,26 +37,6 @@ class Sentinel(metaclass=SentinelMeta):
 
 class UNSET(Sentinel):
     """Special sentinel value indicating that no data was provided. **Do not instantiate**."""
-
-
-def record_init(target: str) -> Callable[[type[T]], type[T]]:
-    """Class decorator that records init argument names as a tuple to ``target``."""
-
-    def decorator(cls: type[T]) -> type[T]:
-        original_init = cls.__init__
-        function_signature = inspect.signature(original_init)
-        param_names = tuple(name for name in function_signature.parameters if name != "self")
-
-        @functools.wraps(original_init)
-        def new_init(self, *args, **kwargs):
-            original_init(self, *args, **kwargs)
-            # Circumvent frozen protection.
-            object.__setattr__(self, target, tuple(param_names[i] for i in range(len(args))) + tuple(kwargs))
-
-        cls.__init__ = new_init
-        return cls
-
-    return decorator
 
 
 def is_iterable(obj) -> bool:
@@ -97,7 +70,7 @@ def is_class_and_subclass(hint, target_class) -> bool:
 def to_tuple_converter(value: None | Any | Iterable[Any]) -> tuple[Any, ...]:
     """Convert a single element or an iterable of elements into a tuple.
 
-    Intended to be used in an ``attrs.Field``. If :obj:`None` is provided, returns an empty tuple.
+    Intended to be used as a field converter. If :obj:`None` is provided, returns an empty tuple.
     If a single element is provided, returns a tuple containing just that element.
     If an iterable is provided, converts it into a tuple.
 
@@ -125,7 +98,7 @@ def to_list_converter(value: None | Any | Iterable[Any]) -> list[Any]:
 def optional_to_tuple_converter(value: None | Any | Iterable[Any]) -> tuple[Any, ...] | None:
     """Convert a string or Iterable or None into an Iterable or None.
 
-    Intended to be used in an ``attrs.Field``.
+    Intended to be used as a field converter.
     """
     if value is None:
         return None
@@ -331,8 +304,7 @@ def resolve_callables(t, *args, **kwargs):
         return t
 
 
-@frozen
-class SortHelper:
+class SortHelper(Struct, frozen=True):
     """Sort a list of objects by an external key and retrieve the objects in-order."""
 
     key: Any
@@ -341,12 +313,15 @@ class SortHelper:
     SortHelpers with ``key`` :obj:`None` or :obj:`.UNSET` go last (alphabetically).
     """
 
-    fallback_key: Any = field(converter=to_tuple_converter)
+    fallback_key: Any
     """Secondary key to sort by.
     """
 
     value: Any
     """Actual object that caller wants to retrieve in the sorted order."""
+
+    def __post_init__(self) -> None:
+        set_field(self, "fallback_key", to_tuple_converter(self.fallback_key))
 
     @staticmethod
     def sort(entries: Sequence["SortHelper"]) -> list["SortHelper"]:

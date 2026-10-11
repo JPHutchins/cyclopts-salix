@@ -6,7 +6,9 @@ import sys
 from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
 from functools import partial
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any
+
+from salix import Struct
 
 from cyclopts._convert import _bool, create_empty_instance
 from cyclopts.annotations import resolve_optional
@@ -38,7 +40,7 @@ if TYPE_CHECKING:
 CliToken = partial(Token, source="cli")
 
 
-class _KeywordMatch(NamedTuple):
+class _KeywordMatch(Struct, frozen=True):
     """Represents a matched CLI token with its corresponding argument."""
 
     matched_token: str

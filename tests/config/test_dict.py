@@ -6,7 +6,7 @@ from cyclopts.config import Dict
 
 def test_config_dict_basic():
     """Test basic Dict config functionality."""
-    app = App(config=Dict({"name": "Alice", "age": 30}), result_action="return_value")
+    app = App(config=Dict(data={"name": "Alice", "age": 30}), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -22,7 +22,7 @@ def test_config_dict_with_commands():
         "create": {"name": "Alice", "age": 30},
         "update": {"name": "Bob", "age": 40},
     }
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.command
     def create(name: str, age: int):
@@ -50,7 +50,7 @@ def test_config_dict_with_root_keys():
         }
     }
     app = App(
-        config=Dict(config_data, root_keys=["production", "database"]),
+        config=Dict(data=config_data, root_keys=["production", "database"]),
         result_action="return_value",
     )
 
@@ -65,7 +65,7 @@ def test_config_dict_with_root_keys():
 def test_config_dict_use_commands_as_keys_false():
     """Test Dict config with use_commands_as_keys=False."""
     config_data = {"name": "Alice", "age": 30}
-    app = App(config=Dict(config_data, use_commands_as_keys=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
 
     @app.command
     def create(name: str, age: int):
@@ -84,8 +84,9 @@ def test_config_dict_use_commands_as_keys_false_with_sibling_commands():
     This reproduces the bug fixed in core.py where executing "polygon 1 2 3 4" would fail
     because the "line" section in the config wasn't being filtered correctly.
     """
-    from dataclasses import KW_ONLY, dataclass
     from typing import Annotated
+
+    from salix import Struct
 
     from cyclopts import Parameter
 
@@ -96,12 +97,10 @@ def test_config_dict_use_commands_as_keys_false_with_sibling_commands():
         "circle": {"color": "green"},
     }
 
-    app = App(config=Dict(config_data, use_commands_as_keys=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
 
     @Parameter(name="*")
-    @dataclass
-    class DrawConfig:
-        _: KW_ONLY
+    class DrawConfig(Struct):
         units: str = "meters"
         color: str = "black"
 
@@ -151,7 +150,7 @@ def test_config_dict_nested_commands_with_use_commands_as_keys_true():
         }
     }
 
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
     sub_app = App()
     app.command(sub_app, name="sub")
 
@@ -187,7 +186,7 @@ def test_config_dict_nested_commands_with_use_commands_as_keys_false():
         "global_setting": "shared_value",
     }
 
-    app = App(config=Dict(config_data, use_commands_as_keys=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
     sub_app = App()
     app.command(sub_app, name="sub")
 
@@ -217,7 +216,7 @@ def test_config_dict_deeply_nested_with_use_commands_as_keys_false():
         "another": 42,
     }
 
-    app = App(config=Dict(config_data, use_commands_as_keys=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
     level1_app = App()
     level2_app = App()
 
@@ -243,7 +242,7 @@ def test_config_dict_mixed_nested_and_flat_commands():
         "count": 10,
     }
 
-    app = App(config=Dict(config_data, use_commands_as_keys=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
 
     @app.command
     def simple(base_value: str, count: int):
@@ -278,7 +277,7 @@ def test_config_dict_use_commands_as_keys_true_filters_subcommands():
         }
     }
 
-    app = App(config=Dict(config_data, use_commands_as_keys=True), result_action="return_value")
+    app = App(config=Dict(data=config_data, use_commands_as_keys=True), result_action="return_value")
     db_app = App()
     app.command(db_app, name="db")
 
@@ -311,7 +310,7 @@ def test_config_dict_allow_unknown():
         "age": 30,
         "unknown_field": "should_be_ignored",
     }
-    app = App(config=Dict(config_data, allow_unknown=True), result_action="return_value")
+    app = App(config=Dict(data=config_data, allow_unknown=True), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -326,10 +325,9 @@ def test_config_dict_allow_unknown_nested_user_class():
 
     Regression test for https://github.com/BrianPugh/cyclopts/issues/731
     """
-    from dataclasses import dataclass
+    from salix import Struct
 
-    @dataclass
-    class ConnectionParameter:
+    class ConnectionParameter(Struct):
         timeout: float
 
     config_data = {
@@ -337,7 +335,7 @@ def test_config_dict_allow_unknown_nested_user_class():
         "np": {"timeout": 4},  # Unknown, should be ignored
     }
     app = App(
-        config=Dict(config_data, allow_unknown=True, use_commands_as_keys=False),
+        config=Dict(data=config_data, allow_unknown=True, use_commands_as_keys=False),
         result_action="return_value",
     )
 
@@ -363,17 +361,17 @@ def test_config_dict_remapped_nested_parameter(config_data):
     config should use {"timeout": 5}, not {"p": {"timeout": 5}}. The nested path
     should raise UnknownOptionError because it doesn't match the remapped CLI name.
     """
-    from dataclasses import dataclass
     from typing import Annotated
+
+    from salix import Struct
 
     from cyclopts import Parameter
 
-    @dataclass
-    class ConnectionParameter:
+    class ConnectionParameter(Struct):
         timeout: Annotated[float, Parameter(name="--timeout")]
 
     app = App(
-        config=Dict(config_data, use_commands_as_keys=False),
+        config=Dict(data=config_data, use_commands_as_keys=False),
         result_action="return_value",
     )
 
@@ -387,7 +385,7 @@ def test_config_dict_remapped_nested_parameter(config_data):
 def test_config_dict_partial_override():
     """Test that CLI args override Dict config values."""
     config_data = {"name": "Alice", "age": 30}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -399,7 +397,7 @@ def test_config_dict_partial_override():
 
 def test_config_dict_empty():
     """Test Dict config with empty dict."""
-    app = App(config=Dict({}), result_action="return_value")
+    app = App(config=Dict(data={}), result_action="return_value")
 
     @app.default
     def main(name: str = "Default", age: int = 0):
@@ -411,7 +409,7 @@ def test_config_dict_empty():
 
 def test_config_dict_empty_dict_value():
     """An empty dict config value binds as ``{}`` instead of raising MissingArgumentError, like an empty list does."""
-    app = App(config=Dict({"x": {}}), result_action="return_value")
+    app = App(config=Dict(data={"x": {}}), result_action="return_value")
 
     @app.default
     def main(x: dict):
@@ -420,15 +418,14 @@ def test_config_dict_empty_dict_value():
     assert app([]) == {}
 
 
-def test_config_dict_empty_dict_value_dataclass():
-    """An empty dict config value constructs an all-defaults dataclass."""
-    from dataclasses import dataclass
+def test_config_dict_empty_dict_value_struct():
+    """An empty dict config value constructs an all-defaults struct."""
+    from salix import Struct
 
-    @dataclass
-    class Options:
+    class Options(Struct):
         threshold: int = 5
 
-    app = App(config=Dict({"options": {}}), result_action="return_value")
+    app = App(config=Dict(data={"options": {}}), result_action="return_value")
 
     @app.default
     def main(options: Options):
@@ -441,7 +438,7 @@ def test_config_dict_root_keys_non_mapping_node():
     """A non-mapping value where ``root_keys`` expects a table raises a clean CycloptsError, not AttributeError."""
     from cyclopts import CycloptsError
 
-    app = App(config=Dict({"tool": 5}, root_keys=("tool",)), result_action="return_value")
+    app = App(config=Dict(data={"tool": 5}, root_keys=("tool",)), result_action="return_value")
 
     @app.default
     def main(x: int = 0):
@@ -455,7 +452,7 @@ def test_config_dict_root_keys_non_mapping_intermediate_node():
     """A non-mapping partway through the ``root_keys`` path raises a clean CycloptsError, not TypeError."""
     from cyclopts import CycloptsError
 
-    app = App(config=Dict({"tool": [1, 2]}, root_keys=("tool", "cyclopts")), result_action="return_value")
+    app = App(config=Dict(data={"tool": [1, 2]}, root_keys=("tool", "cyclopts")), result_action="return_value")
 
     @app.default
     def main(x: int = 0):
@@ -469,7 +466,7 @@ def test_config_dict_command_key_non_mapping_node():
     """A non-mapping value at a command's key raises a clean CycloptsError, not AttributeError."""
     from cyclopts import CycloptsError
 
-    app = App(config=Dict({"sub": 5}), result_action="return_value")
+    app = App(config=Dict(data={"sub": 5}), result_action="return_value")
 
     @app.command
     def sub(x: int = 0):
@@ -480,11 +477,10 @@ def test_config_dict_command_key_non_mapping_node():
 
 
 def test_config_dict_nested_structure():
-    """Test Dict config with nested dataclass-like structures."""
-    from dataclasses import dataclass
+    """Test Dict config with nested struct-like structures."""
+    from salix import Struct
 
-    @dataclass
-    class Database:
+    class Database(Struct):
         host: str
         port: int
 
@@ -494,7 +490,7 @@ def test_config_dict_nested_structure():
             "port": 5432,
         }
     }
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(database: Database):
@@ -506,22 +502,22 @@ def test_config_dict_nested_structure():
 
 def test_config_dict_source():
     """Test that Dict.source returns 'dict' by default."""
-    config = Dict({"key": "value"})
+    config = Dict(data={"key": "value"})
     assert config.source == "dict"
 
 
 def test_config_dict_custom_source():
     """Test that Dict.source can be customized."""
-    config = Dict({"key": "value"}, source="api")
+    config = Dict(data={"key": "value"}, _source="api")
     assert config.source == "api"
 
-    config_network = Dict({"key": "value"}, source="network")
+    config_network = Dict(data={"key": "value"}, _source="network")
     assert config_network.source == "network"
 
 
 def test_config_dict_source_setter():
     """Test that Dict.source can be modified via setter."""
-    config = Dict({"key": "value"})
+    config = Dict(data={"key": "value"})
     assert config.source == "dict"
 
     config.source = "api"
@@ -539,7 +535,7 @@ def test_config_dict_with_subcommands():
             "sub_value": 123,
         },
     }
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(global_flag: bool = False):
@@ -567,7 +563,7 @@ def test_config_dict_unknown_field_error():
         "age": 30,
         "unknown_field": "should_error",
     }
-    app = App(config=Dict(config_data, allow_unknown=False), result_action="return_value")
+    app = App(config=Dict(data=config_data, allow_unknown=False), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -579,8 +575,8 @@ def test_config_dict_unknown_field_error():
 
 def test_config_dict_multiple_configs():
     """Test using multiple Dict configs in a list."""
-    config1 = Dict({"name": "Alice"})
-    config2 = Dict({"age": 30})
+    config1 = Dict(data={"name": "Alice"})
+    config2 = Dict(data={"age": 30})
 
     app = App(config=[config1, config2], result_action="return_value")
 
@@ -599,7 +595,7 @@ def test_config_dict_with_env():
     from cyclopts.config import Env
 
     config_data = {"name": "Alice"}
-    app = App(config=[Dict(config_data), Env("TEST_")], result_action="return_value")
+    app = App(config=[Dict(data=config_data), Env(prefix="TEST_")], result_action="return_value")
 
     @app.default
     def main(name: str, age: int = 0):
@@ -615,7 +611,7 @@ def test_config_dict_with_env():
 
 def test_config_dict_modification_after_creation():
     """Test modifying Dict config after app creation."""
-    config = Dict({"name": "Alice", "age": 30})
+    config = Dict(data={"name": "Alice", "age": 30})
     app = App(config=config, result_action="return_value")
 
     @app.default
@@ -644,7 +640,7 @@ def test_config_dict_with_meta_app():
 
     @app.meta.default
     def meta(*tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)], config_source: str = "dict"):
-        app.config = Dict({"name": "Alice", "age": 30}, source=config_source)
+        app.config = Dict(data={"name": "Alice", "age": 30}, _source=config_source)
         return app(tokens)
 
     result = app.meta([])
@@ -655,7 +651,7 @@ def test_config_dict_deep_nesting():
     """Test Dict config with deep root_keys nesting."""
     config_data = {"level1": {"level2": {"level3": {"level4": {"name": "Alice", "age": 30}}}}}
     app = App(
-        config=Dict(config_data, root_keys=["level1", "level2", "level3", "level4"]),
+        config=Dict(data=config_data, root_keys=["level1", "level2", "level3", "level4"]),
         result_action="return_value",
     )
 
@@ -670,7 +666,7 @@ def test_config_dict_deep_nesting():
 def test_config_dict_cli_priority():
     """Test that CLI arguments have priority over Dict config."""
     config_data = {"name": "Alice", "age": 30}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -685,7 +681,7 @@ def test_config_dict_with_optional():
     from typing import Any
 
     config_data: dict[str, Any] = {"name": "Alice"}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(name: str, age: int | None = None):
@@ -704,7 +700,7 @@ def test_config_dict_with_optional():
 def test_config_dict_with_list():
     """Test Dict config with list parameters."""
     config_data = {"names": ["Alice", "Bob", "Charlie"]}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(names: list[str]):
@@ -723,7 +719,7 @@ def test_config_dict_with_typed_dict():
         age: int
 
     config_data = {"user": {"name": "Alice", "age": 30}}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(user: UserConfig):
@@ -736,7 +732,7 @@ def test_config_dict_with_typed_dict():
 def test_config_dict_immutability():
     """Test that Dict.config returns the actual data (not a copy)."""
     config_data = {"name": "Alice", "age": 30}
-    config = Dict(config_data)
+    config = Dict(data=config_data)
 
     assert config.config is config.data
     config.config["name"] = "Bob"
@@ -747,7 +743,7 @@ def test_config_dict_missing_root_key():
     """Test Dict config when root_keys don't exist in data."""
     config_data = {"production": {"name": "Alice"}}
     app = App(
-        config=Dict(config_data, root_keys=["development", "database"]),
+        config=Dict(data=config_data, root_keys=["development", "database"]),
         result_action="return_value",
     )
 
@@ -761,7 +757,7 @@ def test_config_dict_missing_root_key():
 
 def test_config_dict_reassignment():
     """Test reassigning app.config with new Dict."""
-    app = App(config=Dict({"name": "Alice", "age": 30}), result_action="return_value")
+    app = App(config=Dict(data={"name": "Alice", "age": 30}), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -770,7 +766,7 @@ def test_config_dict_reassignment():
     result = app([])
     assert result == "Alice is 30 years old."
 
-    app.config = Dict({"name": "Bob", "age": 40})
+    app.config = Dict(data={"name": "Bob", "age": 40})
     result = app([])
     assert result == "Bob is 40 years old."
 
@@ -778,7 +774,7 @@ def test_config_dict_reassignment():
 def test_config_dict_with_boolean_flags():
     """Test Dict config with boolean flags."""
     config_data = {"verbose": True, "quiet": False, "debug": True}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(verbose: bool = False, quiet: bool = False, debug: bool = False):
@@ -803,7 +799,7 @@ def test_config_dict_nested_commands():
             "delete": {"name": "olddb", "force": True},
         }
     }
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     db_app = App()
     app.command(db_app, name="db")
@@ -830,7 +826,7 @@ def test_config_dict_error_message_with_custom_source():
     from cyclopts.exceptions import MissingArgumentError
 
     config_data = {"age": 30}
-    app = App(config=Dict(config_data, source="api-response"), result_action="return_value")
+    app = App(config=Dict(data=config_data, _source="api-response"), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -845,7 +841,7 @@ def test_config_dict_error_message_with_custom_source():
 def test_config_dict_with_default_values():
     """Test Dict config interacts correctly with function default values."""
     config_data = {"name": "Alice"}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(name: str = "Default", age: int = 99, city: str = "Unknown"):
@@ -865,7 +861,7 @@ def test_config_dict_with_enum():
         BLUE = "blue"
 
     config_data = {"color": "red"}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(color: Color):
@@ -877,15 +873,13 @@ def test_config_dict_with_enum():
 
 def test_config_dict_with_complex_types():
     """Test Dict config with complex nested types."""
-    from dataclasses import dataclass
+    from salix import Struct
 
-    @dataclass
-    class Address:
+    class Address(Struct):
         street: str
         city: str
 
-    @dataclass
-    class Person:
+    class Person(Struct):
         name: str
         address: Address
 
@@ -895,7 +889,7 @@ def test_config_dict_with_complex_types():
             "address": {"street": "123 Main St", "city": "Springfield"},
         }
     }
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(person: Person):
@@ -910,7 +904,7 @@ def test_config_dict_with_union_types():
     from typing import Any
 
     config_data: dict[str, Any] = {"value": 42}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(value: int | str):
@@ -927,7 +921,7 @@ def test_config_dict_with_union_types():
 def test_config_dict_empty_root_keys():
     """Test Dict config with empty root_keys tuple."""
     config_data = {"name": "Alice", "age": 30}
-    app = App(config=Dict(config_data, root_keys=()), result_action="return_value")
+    app = App(config=Dict(data=config_data, root_keys=()), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
@@ -940,31 +934,11 @@ def test_config_dict_empty_root_keys():
 def test_config_dict_single_root_key():
     """Test Dict config with single root_key."""
     config_data = {"production": {"name": "Alice", "age": 30}}
-    app = App(config=Dict(config_data, root_keys=["production"]), result_action="return_value")
+    app = App(config=Dict(data=config_data, root_keys=["production"]), result_action="return_value")
 
     @app.default
     def main(name: str, age: int):
         return f"{name} is {age} years old."
-
-    result = app([])
-    assert result == "Alice is 30 years old."
-
-
-def test_config_dict_with_attrs_class():
-    """Test Dict config with attrs class."""
-    from attrs import define
-
-    @define
-    class User:
-        name: str
-        age: int
-
-    config_data = {"user": {"name": "Alice", "age": 30}}
-    app = App(config=Dict(config_data), result_action="return_value")
-
-    @app.default
-    def main(user: User):
-        return f"{user.name} is {user.age} years old."
 
     result = app([])
     assert result == "Alice is 30 years old."
@@ -979,7 +953,7 @@ def test_config_dict_comparison_with_json_file():
 
     config_data = {"count": {"character": "t"}}
 
-    dict_app = App(config=Dict(config_data), result_action="return_value")
+    dict_app = App(config=Dict(data=config_data), result_action="return_value")
 
     @dict_app.command
     def count(character: str):  # noqa: F811  # pyright: ignore[reportRedeclaration]
@@ -996,7 +970,7 @@ def test_config_dict_comparison_with_json_file():
     tmp_file = Path("temp_test.json")
     tmp_file.write_text(json.dumps(config_data))
     try:
-        json_app.config = Json(tmp_file)
+        json_app.config = Json(path=tmp_file)
         json_result = json_app("count")
         assert dict_result == json_result
     finally:
@@ -1005,7 +979,7 @@ def test_config_dict_comparison_with_json_file():
 
 def test_config_dict_repr():
     """Test Dict has a useful repr."""
-    config = Dict({"key": "value"}, source="api")
+    config = Dict(data={"key": "value"}, _source="api")
     repr_str = repr(config)
     assert "Dict" in repr_str
     assert "key" in repr_str or "value" in repr_str
@@ -1014,7 +988,7 @@ def test_config_dict_repr():
 def test_config_dict_with_tuple_type():
     """Test Dict config with tuple parameters."""
     config_data = {"coordinates": [1, 2, 3]}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(coordinates: tuple[int, int, int]):
@@ -1027,7 +1001,7 @@ def test_config_dict_with_tuple_type():
 def test_config_dict_with_set_type():
     """Test Dict config with set parameters."""
     config_data = {"tags": ["python", "cli", "config"]}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(tags: set[str]):
@@ -1040,7 +1014,7 @@ def test_config_dict_with_set_type():
 def test_config_dict_with_negative_numbers():
     """Test Dict config with negative numbers."""
     config_data = {"offset": -10, "temperature": -5.5}
-    app = App(config=Dict(config_data), result_action="return_value")
+    app = App(config=Dict(data=config_data), result_action="return_value")
 
     @app.default
     def main(offset: int, temperature: float):
@@ -1054,7 +1028,7 @@ def test_config_dict_root_non_mapping_node():
     """A non-mapping document root raises a clean CycloptsError, not AttributeError."""
     from cyclopts import CycloptsError
 
-    app = App(config=Dict([1, 2], source="dict"), result_action="return_value")  # pyright: ignore[reportArgumentType]
+    app = App(config=Dict(data=[1, 2], _source="dict"), result_action="return_value")  # pyright: ignore[reportArgumentType]
 
     @app.default
     def main(x: int = 0):
@@ -1070,7 +1044,7 @@ def test_config_dict_root_non_mapping_node_with_root_keys():
     """A non-mapping document root is reported before ``root_keys`` are descended."""
     from cyclopts import CycloptsError
 
-    app = App(config=Dict(5, root_keys=("tool",), source="dict"), result_action="return_value")  # pyright: ignore[reportArgumentType]
+    app = App(config=Dict(data=5, root_keys=("tool",), _source="dict"), result_action="return_value")  # pyright: ignore[reportArgumentType]
 
     @app.default
     def main(x: int = 0):
@@ -1080,3 +1054,7 @@ def test_config_dict_root_non_mapping_node_with_root_keys():
         app([], exit_on_error=False)
 
     assert str(e.value) == 'Configuration in "dict" must be a mapping, but got int.'
+
+
+def test_config_dict_root_keys_string_is_normalized_to_tuple():
+    assert Dict(data={}, root_keys="tool").root_keys == ("tool",)

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from textwrap import dedent
 from typing import Annotated
 
@@ -16,6 +15,7 @@ from cyclopts import (
     UnknownCommandError,
     ValidationError,
 )
+from salix import Struct
 
 
 def positive_validator(type_, value):
@@ -146,8 +146,7 @@ def test_exceptions_validation_error_class(app, console):
         raise ValueError("My custom message.")
 
     @Parameter(validator=v)
-    @dataclass
-    class Movie:
+    class Movie(Struct):
         title: str
         year: int
 
