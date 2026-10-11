@@ -123,7 +123,7 @@ def test_bind_salix_struct_recursive(app, assert_parse_args, console, normalize_
 
     expected = dedent(
         """\
-        Usage: test_bind_salix_struct_fields build --license-plate STR --car.name STR
+        Usage: test_bind_struct_data build --license-plate STR --car.name STR
         --car.mileage FLOAT --car.cylinders INT --car.horsepower FLOAT
         --car.wheel.diameter INT [OPTIONS]
 
@@ -254,7 +254,7 @@ def test_bind_salix_struct_positionally(app, assert_parse_args, cmd_str, console
     actual = capture.get()
     expected = dedent(
         """\
-        Usage: test_bind_salix_struct_fields A [ARGS]
+        Usage: test_bind_struct_data A [ARGS]
 
         ╭─ Commands ─────────────────────────────────────────────────────────╮
         │ --help (-h)  Display this message and exit.                        │
@@ -285,7 +285,7 @@ def test_bind_salix_struct_list_default_help(app, console):
     actual = capture.get()
     expected = dedent(
         """\
-        Usage: test_bind_salix_struct_fields [ARGS]
+        Usage: test_bind_struct_data [ARGS]
 
         ╭─ Commands ─────────────────────────────────────────────────────────╮
         │ --help (-h)  Display this message and exit.                        │
