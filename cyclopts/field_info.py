@@ -1,3 +1,4 @@
+import functools
 import inspect
 import sys
 from typing import (  # noqa: F401
@@ -284,19 +285,23 @@ def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
     return out
 
 
+@functools.cache
+def _struct_type_hints(hint) -> dict[str, Any]:
+    return get_type_hints(hint, include_extras=True)
+
+
 def _struct_field_infos(hint) -> dict[str, FieldInfo]:
-    import dataclasses
-
-    def to_dataclass_field(field: salix.Field) -> dataclasses.Field:
-        out = dataclasses.field(
-            default=dataclasses.MISSING if field.default is salix.MISSING else field.default,
-            kw_only=field.kw_only,
+    type_hints = _struct_type_hints(hint)
+    return {
+        field.name: FieldInfo(
+            names=(field.name,),
+            kind=FieldInfo.KEYWORD_ONLY if field.kw_only else FieldInfo.POSITIONAL_OR_KEYWORD,
+            required=field.default is salix.MISSING,
+            annotation=type_hints.get(field.name, FieldInfo.empty),
+            default=FieldInfo.empty if field.default is salix.MISSING else field.default,
         )
-        out.name = field.name
-        out.type = field.type
-        return out
-
-    return _dataclass_field_infos_from_fields(hint, [to_dataclass_field(field) for field in salix.fields(hint)])
+        for field in salix.fields(hint)
+    }
 
 
 def _dataclass_field_infos(hint) -> dict[str, FieldInfo]:
