@@ -1,6 +1,6 @@
-import functools
 import inspect
 import sys
+import weakref
 from typing import (  # noqa: F401
     Annotated,
     Any,
@@ -285,9 +285,14 @@ def _attrs_field_infos(hint) -> dict[str, FieldInfo]:
     return out
 
 
-@functools.cache
+_STRUCT_TYPE_HINTS: "weakref.WeakKeyDictionary[type, dict[str, Any]]" = weakref.WeakKeyDictionary()
+
+
 def _struct_type_hints(hint) -> dict[str, Any]:
-    return get_type_hints(hint, include_extras=True)
+    cached = _STRUCT_TYPE_HINTS.get(hint)
+    if cached is None:
+        cached = _STRUCT_TYPE_HINTS[hint] = get_type_hints(hint, include_extras=True)
+    return cached
 
 
 def _struct_field_infos(hint) -> dict[str, FieldInfo]:
