@@ -1,20 +1,19 @@
 import json
-from dataclasses import dataclass, field
 from typing import Annotated
 
 import pytest
+from salix import Struct
 
 from cyclopts import CycloptsError, Parameter
 
 
-@dataclass
-class User:
+class User(Struct):
     id: int
     name: str = "John Doe"
-    tastes: dict[str, int] = field(default_factory=dict)
+    tastes: dict[str, int] = {}
 
 
-def test_bind_dataclass_from_env_json(app, assert_parse_args, monkeypatch):
+def test_bind_struct_from_env_json(app, assert_parse_args, monkeypatch):
     @app.command
     def foo(some_number: int, user: Annotated[User, Parameter(env_var="USER")]):
         pass
@@ -45,9 +44,8 @@ def test_bind_dataclass_from_env_json(app, assert_parse_args, monkeypatch):
         """--origin='{"x": 1, "y": 2, "label": null}'""",
     ],
 )
-def test_bind_dataclass_from_cli_json(app, assert_parse_args, cmd_str):
-    @dataclass
-    class Coordinate:
+def test_bind_struct_from_cli_json(app, assert_parse_args, cmd_str):
+    class Coordinate(Struct):
         x: int
         y: int
         label: str | None = None
@@ -59,11 +57,10 @@ def test_bind_dataclass_from_cli_json(app, assert_parse_args, cmd_str):
     assert_parse_args(main, cmd_str, Coordinate(1, 2))
 
 
-def test_bind_dataclass_from_cli_json_empty(app, assert_parse_args):
-    """An explicit empty JSON dict instantiates the dataclass from its defaults."""
+def test_bind_struct_from_cli_json_empty(app, assert_parse_args):
+    """An explicit empty JSON dict instantiates the struct from its defaults."""
 
-    @dataclass
-    class Coordinate:
+    class Coordinate(Struct):
         x: int = 0
         y: int = 0
 
@@ -74,21 +71,19 @@ def test_bind_dataclass_from_cli_json_empty(app, assert_parse_args):
     assert_parse_args(main, "--origin={}", Coordinate())
 
 
-def test_nested_dataclass_from_env_json(app, assert_parse_args, monkeypatch):
-    """Test parsing nested dataclasses from environment variable JSON."""
+def test_nested_struct_from_env_json(app, assert_parse_args, monkeypatch):
+    """Test parsing nested structs from environment variable JSON."""
 
-    @dataclass
-    class Address:
+    class Address(Struct):
         street: str
         city: str
         zipcode: str | None = None
 
-    @dataclass
-    class Person:
+    class Person(Struct):
         name: str
         age: int
         address: Address
-        hobbies: list[str] = field(default_factory=list)
+        hobbies: list[str] = []
 
     @app.default
     def main(person: Annotated[Person, Parameter(env_var="PERSON")]):
@@ -111,11 +106,10 @@ def test_nested_dataclass_from_env_json(app, assert_parse_args, monkeypatch):
     assert_parse_args(main, "", expected)
 
 
-def test_list_of_simple_dataclass_from_env(app, assert_parse_args, monkeypatch):
-    """Test parsing list of simple dataclasses from environment variable."""
+def test_list_of_simple_struct_from_env(app, assert_parse_args, monkeypatch):
+    """Test parsing list of simple structs from environment variable."""
 
-    @dataclass
-    class Product:
+    class Product(Struct):
         name: str
         price: float
         in_stock: bool = True
@@ -142,8 +136,7 @@ def test_list_of_simple_dataclass_from_env(app, assert_parse_args, monkeypatch):
 def test_complex_nested_type_validation_env_var(app, monkeypatch):
     """Test that type validation works for complex nested structures from env vars."""
 
-    @dataclass
-    class Config:
+    class Config(Struct):
         name: str
         value: int
         enabled: bool = True

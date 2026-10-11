@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -8,6 +7,7 @@ from cyclopts.argument import Token
 from cyclopts.config._common import ConfigFromFile
 from cyclopts.exceptions import CycloptsError
 from cyclopts.parameter import Parameter
+from salix import Struct
 
 
 class DummyErrorConfigNoMsg(ConfigFromFile):
@@ -246,8 +246,7 @@ def test_config_common_subkeys(app, config_sub_keys):
     config_sub_keys.path.touch()
     app.config = config_sub_keys
 
-    @dataclass
-    class Example:
+    class Example(Struct):
         subkey1: list[str]
         subkey2: list[str]
 

@@ -100,7 +100,7 @@ uv run pytest tests/test_docs_e2e.py -v
 These tests:
 - Build documentation using the complex-demo app
 - Verify the output HTML contains expected content
-- Test that nested commands, dataclass flattening, etc. work in real builds
+- Test that nested commands, struct flattening, etc. work in real builds
 
 ## Test Applications
 
@@ -108,10 +108,9 @@ These tests:
 
 A comprehensive CLI application designed to test all edge cases:
 
-- **Dataclass parameter flattening** - `@Parameter(name="*")`
-- **Nested dataclasses** - Dataclass containing other dataclasses
+- **Struct parameter flattening** - `@Parameter(name="*")`
+- **Nested structs** - Struct containing other structs
 - **Pydantic models** - BaseModel parameters (if pydantic installed)
-- **attrs classes** - @attrs.define parameters (if attrs installed)
 - **4-level nested commands** - `admin → users → permissions → roles`
 - **Custom groups** - `Group.create_ordered()`
 - **Complex union types** - `int | Literal["auto"]`
@@ -174,5 +173,5 @@ Key fixtures from `conftest.py`:
 Tests run on multiple Python versions (3.10-3.14) and operating systems (Ubuntu, macOS, Windows). Some tests are skipped on certain configurations:
 
 - `py312/` tests require Python 3.12+
-- Pydantic/attrs tests gracefully degrade if not installed
+- Pydantic tests gracefully degrade if not installed
 - MkDocs/Sphinx build tests skip if tools not available

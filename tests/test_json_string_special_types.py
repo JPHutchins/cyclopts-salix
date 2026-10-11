@@ -10,10 +10,10 @@ Key principle: If a type can accept str, then a JSON string is already
 a valid value for that type, so JSON parsing should be disabled.
 """
 
-from dataclasses import dataclass
 from typing import Annotated, NewType
 
 import pytest
+from salix import Struct
 
 from cyclopts import Parameter
 
@@ -25,26 +25,22 @@ class CustomStr(str):
 MyStr = NewType("MyStr", str)
 
 
-@dataclass
-class User:
+class User(Struct):
     name: str
     age: int
 
 
-@dataclass
-class UserWithCustomStr:
+class UserWithCustomStr(Struct):
     name: CustomStr
     age: int
 
 
-@dataclass
-class UserWithNewType:
+class UserWithNewType(Struct):
     name: MyStr
     age: int
 
 
-@dataclass
-class UserWithUnion:
+class UserWithUnion(Struct):
     name: str | int
     age: int
 
@@ -180,23 +176,23 @@ def test_union_with_str_no_json_parsing_env_var(app, assert_parse_args, monkeypa
 
 
 # =============================================================================
-# Tests for dataclasses with special string fields
+# Tests for structs with special string fields
 # =============================================================================
 
 
 @pytest.mark.parametrize(
-    "dataclass_type,expected",
+    "struct_type,expected",
     [
         (UserWithCustomStr, UserWithCustomStr(CustomStr("Alice"), 30)),
         (UserWithNewType, UserWithNewType(MyStr("Alice"), 30)),
     ],
     ids=["CustomStr-field", "NewType-field"],
 )
-def test_json_dataclass_with_special_str_fields(app, assert_parse_args, dataclass_type, expected):
-    """JSON object parsing works for dataclasses with special string field types."""
+def test_json_struct_with_special_str_fields(app, assert_parse_args, struct_type, expected):
+    """JSON object parsing works for structs with special string field types."""
 
     @app.default
-    def main(user: dataclass_type):  # type: ignore
+    def main(user: struct_type):  # type: ignore
         pass
 
     assert_parse_args(
@@ -206,8 +202,8 @@ def test_json_dataclass_with_special_str_fields(app, assert_parse_args, dataclas
     )
 
 
-def test_json_dataclass_with_union_field(app, assert_parse_args):
-    """JSON object parsing works for dataclasses with Union fields."""
+def test_json_struct_with_union_field(app, assert_parse_args):
+    """JSON object parsing works for structs with Union fields."""
 
     @app.default
     def main(user: UserWithUnion):
@@ -229,20 +225,20 @@ def test_json_dataclass_with_union_field(app, assert_parse_args):
 
 
 @pytest.mark.parametrize(
-    "dataclass_type,expected_type,name_wrapper",
+    "struct_type,expected_type,name_wrapper",
     [
         (UserWithCustomStr, UserWithCustomStr, CustomStr),
         (UserWithNewType, UserWithNewType, MyStr),
     ],
-    ids=["list[CustomStr-dataclass]", "list[NewType-dataclass]"],
+    ids=["list[CustomStr-struct]", "list[NewType-struct]"],
 )
-def test_json_list_of_dataclass_with_special_fields(
-    app, assert_parse_args, dataclass_type, expected_type, name_wrapper
+def test_json_list_of_struct_with_special_fields(
+    app, assert_parse_args, struct_type, expected_type, name_wrapper
 ):
-    """JSON array parsing works for list of dataclasses with special string fields."""
+    """JSON array parsing works for list of structs with special string fields."""
 
     @app.default
-    def main(users: list[dataclass_type]):  # type: ignore
+    def main(users: list[struct_type]):  # type: ignore
         pass
 
     assert_parse_args(
@@ -255,7 +251,7 @@ def test_json_list_of_dataclass_with_special_fields(
 @pytest.mark.parametrize(
     "type_hint,cmd_args,expected",
     [
-        # Regular dataclass - JSON IS parsed
+        # Regular struct - JSON IS parsed
         (
             list[User],
             ["--values", '{"name": "Alice", "age": 30}', "--values", '{"name": "Bob", "age": 40}'],

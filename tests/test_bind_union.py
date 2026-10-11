@@ -1,9 +1,9 @@
-from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import Annotated, Union
 
 import pytest
+from salix import Struct
 
 from cyclopts import Parameter
 from cyclopts.exceptions import CoercionError, MissingArgumentError
@@ -96,18 +96,16 @@ def test_union_of_list_types_optional(app, cmd_str, expected, assert_parse_args)
     assert_parse_args(foo, cmd_str, expected)
 
 
-@dataclass
-class _TimeRange:
+class _TimeRange(Struct):
     start: int
     end: int
 
 
-@dataclass
-class _Live:
+class _Live(Struct):
     live: Annotated[bool, Parameter(negative=())]
 
 
-def test_union_of_dataclasses_branch_selection(app, assert_parse_args):
+def test_union_of_structs_branch_selection(app, assert_parse_args):
     """A ``Union`` of keyword-accepting types instantiates the branch matching supplied fields.
 
     Each branch's requiredness is evaluated independently, so supplying one member's fields
@@ -128,7 +126,7 @@ def test_union_of_dataclasses_branch_selection(app, assert_parse_args):
     )
 
 
-def test_union_of_dataclasses_missing_active_branch_field(app):
+def test_union_of_structs_missing_active_branch_field(app):
     """A partially-supplied branch still reports its own missing required field."""
 
     @app.command
@@ -141,19 +139,17 @@ def test_union_of_dataclasses_missing_active_branch_field(app):
     assert e.value.argument.name == "--time-period.end"
 
 
-@dataclass
-class _Cat:
+class _Cat(Struct):
     kind: str
     meow: int
 
 
-@dataclass
-class _Dog:
+class _Dog(Struct):
     kind: str
     bark: int
 
 
-def test_union_of_dataclasses_overlapping_fields(app, assert_parse_args):
+def test_union_of_structs_overlapping_fields(app, assert_parse_args):
     """Branches sharing a field name resolve by which branch fully accounts for the input."""
 
     @app.command
@@ -164,19 +160,17 @@ def test_union_of_dataclasses_overlapping_fields(app, assert_parse_args):
     assert_parse_args(cli, "cli --pet.kind x --pet.meow 5", pet=_Cat(kind="x", meow=5))
 
 
-@dataclass
-class _Small:
+class _Small(Struct):
     a: int
 
 
-@dataclass
-class _Big:
+class _Big(Struct):
     a: int
     b: int
 
 
 @pytest.mark.parametrize("hint", [Union[_Small, _Big], Union[_Big, _Small]])
-def test_union_of_dataclasses_subset_branch_reachable(app, assert_parse_args, hint):
+def test_union_of_structs_subset_branch_reachable(app, assert_parse_args, hint):
     """A branch whose fields are a subset of another's is still selectable (order-independent)."""
 
     @app.command
@@ -189,7 +183,7 @@ def test_union_of_dataclasses_subset_branch_reachable(app, assert_parse_args, hi
     assert_parse_args(cli, "cli --x.a 1 --x.b 2", x=_Big(a=1, b=2))
 
 
-def test_union_of_dataclasses_ambiguous_fields_error(app):
+def test_union_of_structs_ambiguous_fields_error(app):
     """Supplying fields spanning multiple branches yields a clean CoercionError, not a TypeError."""
 
     @app.command

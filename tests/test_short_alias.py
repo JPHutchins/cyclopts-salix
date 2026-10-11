@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
 from enum import Flag, auto
 from typing import Annotated, Optional, Union
 
 import pytest
+from salix import Struct
 
 from cyclopts import App, Parameter
 from cyclopts.argument import ArgumentCollection
@@ -129,18 +129,16 @@ def test_short_alias_skips_version_flag(app):
     assert collection[0].parameter.name == ("--verbose", "-V")
 
 
-def test_short_alias_nested_dataclass_top_level_only(app, assert_parse_args):
+def test_short_alias_nested_struct_top_level_only(app, assert_parse_args):
     """Containers and their promoted fields get no auto short by default; only top-level scalars do."""
 
-    @dataclass
-    class Color:
+    class Color(Struct):
         red: int = 0
         green: int = 0
 
-    @dataclass
-    class User:
+    class User(Struct):
         name: str = ""
-        color: Color = field(default_factory=Color)
+        color: Color = Color()
 
     @app.command(default_parameter=Parameter(short_alias=True))
     def foo(*, user: User | None = None, upload: bool = False):
@@ -164,8 +162,7 @@ def test_short_alias_nested_field_opt_in_is_inert(app):
     ``short_alias=True`` directly. Flattening via ``name="*"`` is the way to give it a short.
     """
 
-    @dataclass
-    class User:
+    class User(Struct):
         name: Annotated[str, Parameter(short_alias=True)] = ""
         color: str = ""
 
@@ -187,15 +184,13 @@ def test_short_alias_flattened_fields_get_short(app, assert_parse_args):
     flattened one (``--color``) and its dotted leaf (``--color.red``) still get no short.
     """
 
-    @dataclass
-    class Color:
+    class Color(Struct):
         red: int = 0
 
-    @dataclass
-    class User:
+    class User(Struct):
         name: str = ""
         email: str = ""
-        color: Color = field(default_factory=Color)
+        color: Color = Color()
 
     @app.command(default_parameter=Parameter(short_alias=True))
     def foo(user: Annotated[User | None, Parameter(name="*")] = None):
@@ -338,8 +333,7 @@ def test_short_alias_enum_flag_gets_short(app):
 def test_short_alias_accepts_keys_false_gets_short(app):
     """A class with accepts_keys=False consumes tokens directly, so it gets a short."""
 
-    @dataclass
-    class Point:
+    class Point(Struct):
         x: int = 0
         y: int = 0
 

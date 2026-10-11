@@ -1349,19 +1349,17 @@ def test_result_action_call_if_callable_with_none():
     assert result is None
 
 
-def test_result_action_call_if_callable_with_dataclass():
-    """call_if_callable: works with dataclass __call__ pattern."""
-    import dataclasses as dc
+def test_result_action_call_if_callable_with_struct():
+    """call_if_callable: works with struct __call__ pattern."""
+    from salix import Struct
 
     app = App(result_action="call_if_callable")
 
     @app.command
-    @dc.dataclass
-    class Hello:
+    class Hello(Struct):
         """Say hello."""
 
         name: str = "World"
-        _: dc.KW_ONLY
         formal: bool = False
 
         def __call__(self):
@@ -1421,18 +1419,16 @@ def test_result_action_empty_sequence_raises_error():
 
 
 def test_result_action_call_if_callable_composition(monkeypatch):
-    """Composition: call_if_callable with print_non_int_sys_exit for dataclass pattern."""
-    import dataclasses as dc
+    """Composition: call_if_callable with print_non_int_sys_exit for struct pattern."""
+    from salix import Struct
 
     app = App(result_action=["call_if_callable", "print_non_int_sys_exit"])
 
     @app.command
-    @dc.dataclass
-    class Hello:
+    class Hello(Struct):
         """Say hello."""
 
         name: str = "World"
-        _: dc.KW_ONLY
         formal: bool = False
 
         def __call__(self):

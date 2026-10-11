@@ -1,10 +1,10 @@
 import inspect
-from collections import namedtuple
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional, Union
 
 import pytest
+from salix import Struct
 
 from cyclopts.annotations import contains_hint, get_hint_name, is_iterable_type, resolve
 
@@ -55,9 +55,12 @@ def test_get_hint_name_optional_type():
     assert get_hint_name(Optional[int]) == "int|None"
 
 
-def test_get_hint_name_namedtuple():
-    TestTuple = namedtuple("TestTuple", ["field1", "field2"])
-    assert get_hint_name(TestTuple) == "TestTuple"
+def test_get_hint_name_struct():
+    class TestStruct(Struct):
+        field1: int
+        field2: int
+
+    assert get_hint_name(TestStruct) == "TestStruct"
 
 
 def test_get_hint_name_complex_union():

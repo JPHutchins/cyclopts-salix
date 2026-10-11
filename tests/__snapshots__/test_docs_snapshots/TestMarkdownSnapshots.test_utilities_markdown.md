@@ -76,7 +76,7 @@ complex-cli cache configure [OPTIONS]
 
 Configure cache settings.
 
-Demonstrates attrs class support for CLI parameters.
+Demonstrates salix Struct support for CLI parameters.
 
 **Parameters**:
 

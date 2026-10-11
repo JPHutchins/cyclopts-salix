@@ -84,8 +84,9 @@ def test_config_dict_use_commands_as_keys_false_with_sibling_commands():
     This reproduces the bug fixed in core.py where executing "polygon 1 2 3 4" would fail
     because the "line" section in the config wasn't being filtered correctly.
     """
-    from dataclasses import KW_ONLY, dataclass
     from typing import Annotated
+
+    from salix import Struct
 
     from cyclopts import Parameter
 
@@ -99,9 +100,7 @@ def test_config_dict_use_commands_as_keys_false_with_sibling_commands():
     app = App(config=Dict(data=config_data, use_commands_as_keys=False), result_action="return_value")
 
     @Parameter(name="*")
-    @dataclass
-    class DrawConfig:
-        _: KW_ONLY
+    class DrawConfig(Struct):
         units: str = "meters"
         color: str = "black"
 
@@ -326,10 +325,9 @@ def test_config_dict_allow_unknown_nested_user_class():
 
     Regression test for https://github.com/BrianPugh/cyclopts/issues/731
     """
-    from dataclasses import dataclass
+    from salix import Struct
 
-    @dataclass
-    class ConnectionParameter:
+    class ConnectionParameter(Struct):
         timeout: float
 
     config_data = {
@@ -363,13 +361,13 @@ def test_config_dict_remapped_nested_parameter(config_data):
     config should use {"timeout": 5}, not {"p": {"timeout": 5}}. The nested path
     should raise UnknownOptionError because it doesn't match the remapped CLI name.
     """
-    from dataclasses import dataclass
     from typing import Annotated
+
+    from salix import Struct
 
     from cyclopts import Parameter
 
-    @dataclass
-    class ConnectionParameter:
+    class ConnectionParameter(Struct):
         timeout: Annotated[float, Parameter(name="--timeout")]
 
     app = App(
@@ -420,12 +418,11 @@ def test_config_dict_empty_dict_value():
     assert app([]) == {}
 
 
-def test_config_dict_empty_dict_value_dataclass():
-    """An empty dict config value constructs an all-defaults dataclass."""
-    from dataclasses import dataclass
+def test_config_dict_empty_dict_value_struct():
+    """An empty dict config value constructs an all-defaults struct."""
+    from salix import Struct
 
-    @dataclass
-    class Options:
+    class Options(Struct):
         threshold: int = 5
 
     app = App(config=Dict(data={"options": {}}), result_action="return_value")
@@ -480,11 +477,10 @@ def test_config_dict_command_key_non_mapping_node():
 
 
 def test_config_dict_nested_structure():
-    """Test Dict config with nested dataclass-like structures."""
-    from dataclasses import dataclass
+    """Test Dict config with nested struct-like structures."""
+    from salix import Struct
 
-    @dataclass
-    class Database:
+    class Database(Struct):
         host: str
         port: int
 
@@ -877,15 +873,13 @@ def test_config_dict_with_enum():
 
 def test_config_dict_with_complex_types():
     """Test Dict config with complex nested types."""
-    from dataclasses import dataclass
+    from salix import Struct
 
-    @dataclass
-    class Address:
+    class Address(Struct):
         street: str
         city: str
 
-    @dataclass
-    class Person:
+    class Person(Struct):
         name: str
         address: Address
 
@@ -945,26 +939,6 @@ def test_config_dict_single_root_key():
     @app.default
     def main(name: str, age: int):
         return f"{name} is {age} years old."
-
-    result = app([])
-    assert result == "Alice is 30 years old."
-
-
-def test_config_dict_with_attrs_class():
-    """Test Dict config with attrs class."""
-    from attrs import define
-
-    @define
-    class User:
-        name: str
-        age: int
-
-    config_data = {"user": {"name": "Alice", "age": 30}}
-    app = App(config=Dict(data=config_data), result_action="return_value")
-
-    @app.default
-    def main(user: User):
-        return f"{user.name} is {user.age} years old."
 
     result = app([])
     assert result == "Alice is 30 years old."

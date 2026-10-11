@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
 from typing import Annotated
 
 import pytest
+from salix import Struct
 
 from cyclopts import CycloptsError, Parameter
 
@@ -19,8 +19,7 @@ LIST_STR_LIKE_TYPES = [
 ]
 
 
-@dataclass
-class User:
+class User(Struct):
     name: str
     age: int
 
@@ -103,8 +102,8 @@ def test_json_list_env_str(app, assert_parse_args, env_str, monkeypatch, json_li
     assert_parse_args(main, "", [1, 2, 3])
 
 
-def test_json_list_of_dataclass_array(app, assert_parse_args):
-    """Test JSON array input for list of dataclasses."""
+def test_json_list_of_struct_array(app, assert_parse_args):
+    """Test JSON array input for list of structs."""
 
     @app.default
     def main(values: list[User]):
@@ -117,8 +116,8 @@ def test_json_list_of_dataclass_array(app, assert_parse_args):
     )
 
 
-def test_json_list_of_dataclass_env_var(app, assert_parse_args, monkeypatch):
-    """Test JSON array from environment variable for list of dataclasses."""
+def test_json_list_of_struct_env_var(app, assert_parse_args, monkeypatch):
+    """Test JSON array from environment variable for list of structs."""
     monkeypatch.setenv("USERS", '[{"name": "Alice", "age": 30}, {"name": "Bob", "age": 40}]')
 
     @app.default
@@ -128,8 +127,8 @@ def test_json_list_of_dataclass_env_var(app, assert_parse_args, monkeypatch):
     assert_parse_args(main, "", [User("Alice", 30), User("Bob", 40)])
 
 
-def test_json_list_of_dataclass_individual(app, assert_parse_args):
-    """Test multiple individual JSON objects for list of dataclasses."""
+def test_json_list_of_struct_individual(app, assert_parse_args):
+    """Test multiple individual JSON objects for list of structs."""
 
     @app.default
     def main(values: list[User]):
@@ -142,7 +141,7 @@ def test_json_list_of_dataclass_individual(app, assert_parse_args):
     )
 
 
-def test_json_list_of_dataclass_mixed(app, assert_parse_args):
+def test_json_list_of_struct_mixed(app, assert_parse_args):
     """Test mixing individual JSON objects with JSON arrays."""
 
     @app.default
@@ -163,8 +162,8 @@ def test_json_list_of_dataclass_mixed(app, assert_parse_args):
     )
 
 
-def test_json_list_of_dataclass_empty_array(app, assert_parse_args):
-    """Test empty JSON array for list of dataclasses."""
+def test_json_list_of_struct_empty_array(app, assert_parse_args):
+    """Test empty JSON array for list of structs."""
 
     @app.default
     def main(values: list[User] | None = None):  # pyright: ignore
@@ -173,7 +172,7 @@ def test_json_list_of_dataclass_empty_array(app, assert_parse_args):
     assert_parse_args(main, ["--values", "[]"], [])
 
 
-def test_json_list_of_dataclass_single_element_array(app, assert_parse_args):
+def test_json_list_of_struct_single_element_array(app, assert_parse_args):
     """Test single-element JSON array."""
 
     @app.default
@@ -287,8 +286,7 @@ def test_json_list_python_style_booleans(app):
     This test ensures we properly handle this common mistake with clear, specific error messages.
     """
 
-    @dataclass
-    class Item:
+    class Item(Struct):
         enabled: bool
         disabled: bool
         name: str
@@ -325,8 +323,7 @@ def test_json_list_python_style_booleans(app):
 def test_json_list_python_none(app):
     """Test that Python's None in JSON raises appropriate error with specific hint."""
 
-    @dataclass
-    class Config:
+    class Config(Struct):
         name: str
         value: int | None
 
@@ -353,7 +350,7 @@ def test_json_list_python_none(app):
 def test_json_list_type_mismatch_in_field(app):
     """Test that type mismatches in JSON fields now raise errors consistently.
 
-    After the fix, both single dataclasses and lists of dataclasses
+    After the fix, both single structs and lists of structs
     perform type conversion and validation on JSON fields.
     """
 
@@ -399,7 +396,7 @@ def test_json_list_missing_required_field(app):
 def test_json_list_extra_field_rejected(app):
     """Test that extra fields in JSON are rejected.
 
-    This ensures consistent validation between single dataclass and list[dataclass].
+    This ensures consistent validation between single struct and list[struct].
     Extra fields in JSON should raise an error to catch typos and invalid data.
     """
 
@@ -445,7 +442,7 @@ def test_json_list_nested_array_produces_empty_list(app, assert_parse_args):
 
     The current implementation skips non-dict elements in JSON arrays,
     so a nested array (which contains a list, not a dict) results in
-    no valid dataclass objects being created.
+    no valid struct objects being created.
     """
 
     @app.default
@@ -465,8 +462,8 @@ def test_json_list_nested_array_produces_empty_list(app, assert_parse_args):
 # =============================================================================
 
 
-def test_json_single_dataclass_malformed(app):
-    """Test that malformed JSON for single dataclass raises error."""
+def test_json_single_struct_malformed(app):
+    """Test that malformed JSON for single struct raises error."""
 
     @app.default
     def main(user: User):
@@ -477,10 +474,10 @@ def test_json_single_dataclass_malformed(app):
         app(["--user", '{"name": "Alice", "age": 30'], exit_on_error=False)
 
 
-def test_json_single_dataclass_type_mismatch(app):
-    """Test that type mismatches in single dataclass JSON raise errors.
+def test_json_single_struct_type_mismatch(app):
+    """Test that type mismatches in single struct JSON raise errors.
 
-    Cyclopts attempts to convert dataclass field values to their proper types
+    Cyclopts attempts to convert struct field values to their proper types
     after JSON parsing. If a value can't be converted (e.g., "thirty" to int),
     an error is raised.
     """
@@ -494,8 +491,8 @@ def test_json_single_dataclass_type_mismatch(app):
         app(["--user", '{"name": "Alice", "age": "thirty"}'], exit_on_error=False)
 
 
-def test_json_single_dataclass_type_conversion_success(app, assert_parse_args):
-    """Test that valid type conversions work for JSON fields in single dataclass.
+def test_json_single_struct_type_conversion_success(app, assert_parse_args):
+    """Test that valid type conversions work for JSON fields in single struct.
 
     String "25" should be converted to int 25, matching list behavior.
     """
@@ -512,8 +509,8 @@ def test_json_single_dataclass_type_conversion_success(app, assert_parse_args):
     )
 
 
-def test_json_single_dataclass_missing_field(app):
-    """Test that missing required fields in single dataclass JSON raise errors."""
+def test_json_single_struct_missing_field(app):
+    """Test that missing required fields in single struct JSON raise errors."""
 
     @app.default
     def main(user: User):
@@ -545,10 +542,9 @@ def test_json_list_with_float_to_int_conversion(app, assert_parse_args):
 
 
 def test_json_list_with_bool_field(app, assert_parse_args):
-    """Test dataclass with boolean field conversion."""
+    """Test struct with boolean field conversion."""
 
-    @dataclass
-    class Config:
+    class Config(Struct):
         enabled: bool
         count: int
 

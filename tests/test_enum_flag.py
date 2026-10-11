@@ -1,11 +1,11 @@
 """Tests for enum.Flag and enum.IntFlag support in cyclopts."""
 
-from dataclasses import dataclass
 from enum import Flag, IntFlag, auto
 from textwrap import dedent
 from typing import Annotated
 
 import pytest
+from salix import Struct
 
 from cyclopts import MissingArgumentError, Parameter
 from cyclopts.exceptions import CoercionError, UnknownOptionError
@@ -30,8 +30,7 @@ class HttpStatus(IntFlag):
     SERVER_ERROR = 500
 
 
-@dataclass
-class User:
+class User(Struct):
     name: str
     perms: Permission = Permission.READ
 
@@ -253,8 +252,8 @@ def test_flag_help_star_name_shows_member_docstrings(app, console):
     assert expected == actual
 
 
-def test_flag_in_dataclass(app, assert_parse_args):
-    """Test Flag enum field in a dataclass."""
+def test_flag_in_struct(app, assert_parse_args):
+    """Test Flag enum field in a struct."""
 
     @app.default
     def main(user: User):
@@ -269,8 +268,8 @@ def test_flag_in_dataclass(app, assert_parse_args):
     )
 
 
-def test_flag_in_dataclass_positionally(app, assert_parse_args):
-    """Test Flag enum field positionally in a dataclass."""
+def test_flag_in_struct_positionally(app, assert_parse_args):
+    """Test Flag enum field positionally in a struct."""
 
     @app.default
     def main(user: User):
@@ -279,8 +278,8 @@ def test_flag_in_dataclass_positionally(app, assert_parse_args):
     assert_parse_args(main, "Bob write execute", User("Bob", Permission.WRITE | Permission.EXECUTE))
 
 
-def test_flag_in_dataclass_help(app, console):
-    """Test help output for dataclass with Flag enum field."""
+def test_flag_in_struct_help(app, console):
+    """Test help output for struct with Flag enum field."""
 
     @app.default
     def main(user: User):
@@ -316,8 +315,8 @@ def test_flag_in_dataclass_help(app, console):
     assert expected == actual
 
 
-def test_flag_in_dataclass_help_no_negative(app, console):
-    """Test help output for dataclass with Flag enum field."""
+def test_flag_in_struct_help_no_negative(app, console):
+    """Test help output for struct with Flag enum field."""
 
     @app.default
     def main(user: Annotated[User, Parameter(negative="")]):
@@ -353,11 +352,10 @@ def test_flag_in_dataclass_help_no_negative(app, console):
     assert expected == actual
 
 
-def test_flag_in_dataclass_help_no_keywords(app, assert_parse_args, console):
-    """Test help output for dataclass with Flag enum field."""
+def test_flag_in_struct_help_no_keywords(app, assert_parse_args, console):
+    """Test help output for struct with Flag enum field."""
 
-    @dataclass
-    class User:
+    class User(Struct):
         name: str
         perms: Annotated[Permission, Parameter(accepts_keys=False)] = Permission.READ
 

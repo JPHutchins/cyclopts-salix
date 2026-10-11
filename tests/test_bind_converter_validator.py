@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 from typing import Annotated
 from unittest.mock import Mock
 
 import pytest
+from salix import Struct
 
 from cyclopts import Parameter, ValidationError
 from cyclopts.exceptions import CoercionError
@@ -191,8 +191,7 @@ def test_custom_converter_inside_class(app, mocker):
     converter = mocker.Mock(return_value=5)
 
     @Parameter(name="*")
-    @dataclass
-    class Config:
+    class Config(Struct):
         foo: Annotated[int, Parameter(converter=converter)]
 
     @app.default
@@ -208,8 +207,7 @@ def test_classmethod_validator_string_reference(app, assert_parse_args):
     """String reference to a classmethod validator on a Parameter-decorated class."""
 
     @Parameter(name="*", validator="validate")
-    @dataclass
-    class TextStyle:
+    class TextStyle(Struct):
         color: str
         bold: bool = False
         italic: bool = False
@@ -232,8 +230,7 @@ def test_classmethod_validator_string_reference(app, assert_parse_args):
 def test_classmethod_validator_direct_reference(app, assert_parse_args):
     """Direct classmethod reference exercises the inspect.ismethod branch."""
 
-    @dataclass
-    class TextStyle:
+    class TextStyle(Struct):
         color: str
         bold: bool = False
         italic: bool = False
@@ -258,8 +255,7 @@ def test_staticmethod_validator_string_reference(app, assert_parse_args):
     seen = {}
 
     @Parameter(name="*", validator="validate")
-    @dataclass
-    class TextStyle:
+    class TextStyle(Struct):
         color: str
         bold: bool = False
 
@@ -282,8 +278,7 @@ def test_staticmethod_validator_string_reference(app, assert_parse_args):
 def test_staticmethod_validator_direct_reference(app, assert_parse_args):
     """Direct staticmethod reference."""
 
-    @dataclass
-    class TextStyle:
+    class TextStyle(Struct):
         color: str
 
         @staticmethod
@@ -309,8 +304,7 @@ def test_validator_string_reference_in_list(app, assert_parse_args):
         external_calls.append(value)
 
     @Parameter(name="*", validator=["validate_a", external, "validate_b"])
-    @dataclass
-    class Config:
+    class Config(Struct):
         n: int
 
         @classmethod

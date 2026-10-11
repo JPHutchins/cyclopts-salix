@@ -462,7 +462,7 @@ process
 
 Process data files with configurable options.
 
-This command demonstrates dataclass parameter flattening where
+This command demonstrates struct parameter flattening where
 all fields from ProcessingConfig and PathConfig become CLI options.
 
 **Arguments:**
@@ -510,7 +510,7 @@ pipeline
 
 Run a complete data pipeline.
 
-Demonstrates nested dataclass flattening (PipelineConfig contains
+Demonstrates nested struct flattening (PipelineConfig contains
 PathConfig and ProcessingConfig).
 
 **Parameters:**
@@ -705,7 +705,7 @@ configure
 
 Configure cache settings.
 
-Demonstrates attrs class support for CLI parameters.
+Demonstrates salix Struct support for CLI parameters.
 
 **Parameters:**
 

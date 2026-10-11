@@ -1,10 +1,10 @@
-from dataclasses import dataclass
 
 import pytest
 
 from cyclopts.argument import ArgumentCollection
 from cyclopts.config import Env
 from cyclopts.token import Token
+from salix import Struct
 
 
 @pytest.fixture
@@ -93,9 +93,8 @@ def test_config_env_dict(apps, monkeypatch):
     assert ac[0].tokens[1].keys == ("fizz",)
 
 
-def test_config_env_dataclass(apps, monkeypatch):
-    @dataclass
-    class User:
+def test_config_env_struct(apps, monkeypatch):
+    class User(Struct):
         fizz_fizz: int
         buzz_buzz: int
 

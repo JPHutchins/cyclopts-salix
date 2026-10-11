@@ -1,14 +1,13 @@
 import collections.abc
 from collections.abc import Sequence
-from dataclasses import dataclass
 from enum import Enum
 from functools import partial
 from textwrap import dedent
 from typing import Annotated, Literal, Optional, TypedDict
 
-import attrs
 import pytest
 from pydantic import BaseModel, Field
+from salix import Struct
 
 from cyclopts import App, Group, Parameter
 from cyclopts.argument import ArgumentCollection
@@ -856,12 +855,11 @@ def test_help_format_group_parameters_slice_default(capture_format_group_paramet
     assert actual == expected
 
 
-def test_help_format_dataclass_default_parameter_negative_propagation(app, console):
+def test_help_format_struct_default_parameter_negative_propagation(app, console):
     app.default_parameter = Parameter(negative=())
 
     @Parameter(name="*")
-    @dataclass
-    class Common:
+    class Common(Struct):
         force: bool
 
     @app.default
@@ -890,10 +888,9 @@ def test_help_format_dataclass_default_parameter_negative_propagation(app, conso
     assert actual == expected
 
 
-def test_help_format_dataclass_decorated_parameter_negative_propagation(app, console):
+def test_help_format_struct_decorated_parameter_negative_propagation(app, console):
     @Parameter(name="*", negative=())
-    @dataclass
-    class Common:
+    class Common(Struct):
         force: bool
 
     @app.default
@@ -3294,11 +3291,10 @@ def test_help_pydantic_dict_circular_reference(app, console):
     assert actual == expected
 
 
-def test_help_dict_of_dataclass(app, console):
-    """dict[str, dataclass] fields are expanded with defaults rendered."""
+def test_help_pydantic_dict_of_basemodel_defaults(app, console):
+    """dict[str, BaseModel] fields are expanded with defaults rendered."""
 
-    @dataclass
-    class SubConfig:
+    class SubConfig(BaseModel):
         path: str = "/tmp"
         count: int = 3
 
@@ -3332,11 +3328,10 @@ def test_help_dict_of_dataclass(app, console):
     assert actual == expected
 
 
-def test_help_dict_of_attrs(app, console):
-    """dict[str, attrs-class] fields are expanded with defaults rendered."""
+def test_help_dict_of_struct_direct(app, console):
+    """dict[str, Struct] fields are expanded with defaults rendered."""
 
-    @attrs.define
-    class SubConfig:
+    class SubConfig(Struct):
         path: str = "/tmp"
 
     @app.default

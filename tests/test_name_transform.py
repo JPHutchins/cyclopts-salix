@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from enum import Enum, auto
 from textwrap import dedent
 from typing import Annotated
@@ -6,6 +5,7 @@ from typing import Annotated
 import pytest
 
 from cyclopts import App, Parameter, default_name_transform
+from salix import Struct
 
 
 @pytest.mark.parametrize(
@@ -197,17 +197,15 @@ def test_parameter_name_transform_help_enum(app, console):
     assert actual == expected
 
 
-def test_parameter_name_transform_dataclass(app, assert_parse_args):
+def test_parameter_name_transform_struct(app, assert_parse_args):
     app.default_parameter = Parameter(name_transform=lambda s: s.upper())
 
-    @dataclass
-    class Color:
+    class Color(Struct):
         red: int
         green: int
         blue: int
 
-    @dataclass
-    class User:
+    class User(Struct):
         name: str
         favorite_color: Color
 
