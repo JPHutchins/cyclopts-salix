@@ -7,7 +7,6 @@ from itertools import chain
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from attrs import define, field
 from salix import Struct
 
 from cyclopts.argument import ArgumentCollection, update_argument_collection

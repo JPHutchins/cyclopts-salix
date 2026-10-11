@@ -4,7 +4,6 @@ import re
 from typing import TYPE_CHECKING, Any
 
 import yaml
-from attrs import define, field, validators
 from salix import Struct
 
 from cyclopts.docs.markdown import generate_markdown_docs

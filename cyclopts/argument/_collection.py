@@ -548,7 +548,7 @@ class ArgumentCollection(list[Argument]):
         Tree-aware counterpart to the static :attr:`Argument.required`. Includes
         conditionally-required fields of composites that have been *partially* supplied
         (e.g. ``--end`` when only ``--start`` was given) by delegating to each composite's
-        own missing-keys checker — so it is correct for dataclasses, pydantic, attrs and
+        own missing-keys checker — so it is correct for structs, pydantic and
         TypedDicts alike. A *required* composite that received no tokens contributes all of
         its required leaves; an *optional* one contributes nothing.
 

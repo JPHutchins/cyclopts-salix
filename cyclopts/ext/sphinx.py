@@ -3,7 +3,6 @@ from salix import Struct
 
 from typing import TYPE_CHECKING, Any
 
-import attrs
 
 from cyclopts import __version__
 from cyclopts.utils import import_app
@@ -63,7 +62,7 @@ class DirectiveOptions(Struct, frozen=True):
                         kwargs[name] = []
                 else:
                     kwargs[name] = value
-            # If not specified, the dataclass default will be used
+            # If not specified, the struct default will be used
 
         return cls(**kwargs)
 

@@ -24,10 +24,7 @@ from cyclopts.annotations import (
     contains_hint,
     get_annotated_discriminator,
     get_hint_name,
-    is_attrs,
-    is_dataclass,
     is_enum_flag,
-    is_namedtuple,
     is_nonetype,
     is_pydantic,
     is_salix_struct,
@@ -47,7 +44,6 @@ from cyclopts.exceptions import (
 )
 from cyclopts.field_info import (
     FieldInfo,
-    _attrs_field_infos,
     _generic_class_field_infos,
     _pydantic_field_infos,
     _struct_field_infos,
@@ -116,14 +112,13 @@ class Argument(Struct, frozen=False):
     .. code-block:: python
 
         from cyclopts import App, Parameter
-        from dataclasses import dataclass
+        from salix import Struct
         from typing import Annotated
 
         app = App()
 
 
-        @dataclass
-        class User:
+        class User(Struct):
             id: int
             name: Annotated[str, Parameter(name="--fullname")]
 
@@ -244,20 +239,8 @@ class Argument(Struct, frozen=False):
                 self._missing_keys_checker = missing_keys_factory(_typed_dict_field_infos)
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
-            elif is_dataclass(hint):
-                self._missing_keys_checker = missing_keys_factory(
-                    _struct_field_infos if is_salix_struct(hint) else _generic_class_field_infos
-                )
-                self._accepts_keywords = True
-                self._update_lookup(field_infos)
-            elif is_namedtuple(hint):
-                self._missing_keys_checker = missing_keys_factory(_generic_class_field_infos)
-                self._accepts_keywords = True
-                if not hasattr(hint, "__annotations__"):
-                    raise ValueError("Cyclopts cannot handle collections.namedtuple without type annotations.")
-                self._update_lookup(field_infos)
-            elif is_attrs(hint):
-                self._missing_keys_checker = missing_keys_factory(_attrs_field_infos)
+            elif is_salix_struct(hint):
+                self._missing_keys_checker = missing_keys_factory(_struct_field_infos)
                 self._accepts_keywords = True
                 self._update_lookup(field_infos)
             elif is_pydantic(hint):
@@ -476,8 +459,8 @@ class Argument(Struct, frozen=False):
         Walks the type hint segment-by-segment:
 
         * Dynamic ``dict`` keys pass through unchanged (advance to the value type).
-        * Segments addressing a structured type (pydantic / dataclass / attrs /
-          TypedDict / NamedTuple) are looked up in a ``{name_transform(name): name}``
+        * Segments addressing a structured type (pydantic / salix Struct /
+          TypedDict) are looked up in a ``{name_transform(name): name}``
           map built from the type's field_infos; on hit, the segment is replaced
           with the canonical name and the walk advances to that field's annotation.
         * On miss or when the hint is unwalkable (plain scalar, unresolved forward
