@@ -1,12 +1,10 @@
-from salix import Struct
+from salix import Struct, replace
 import math
 import sys
 import textwrap
 from collections.abc import Iterable
 from operator import attrgetter
 from typing import TYPE_CHECKING, Any, Literal, Optional, Union
-
-from attrs import evolve
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -401,7 +399,7 @@ class ColumnSpec(Struct, frozen=True):
         return "" if value is None else value
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)
 
 
 # For Parameters:
@@ -704,7 +702,7 @@ class TableSpec(Struct, frozen=True):
         return table
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)
 
 
 class PanelSpec(Struct, frozen=True):
@@ -835,4 +833,4 @@ class PanelSpec(Struct, frozen=True):
         return Panel(renderable, **opts)
 
     def copy(self, **kwargs: Any) -> Self:
-        return evolve(self, **kwargs)
+        return replace(self, **kwargs)

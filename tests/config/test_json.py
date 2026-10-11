@@ -154,3 +154,7 @@ def test_config_empty_json(tmp_path, console):
         """
     )
     assert actual == expected
+
+
+def test_config_json_root_keys_string_is_normalized_to_tuple(tmp_path: Path):
+    assert Json(path=tmp_path / "config.json", root_keys="tool").root_keys == ("tool",)

@@ -1080,3 +1080,7 @@ def test_config_dict_root_non_mapping_node_with_root_keys():
         app([], exit_on_error=False)
 
     assert str(e.value) == 'Configuration in "dict" must be a mapping, but got int.'
+
+
+def test_config_dict_root_keys_string_is_normalized_to_tuple():
+    assert Dict(data={}, root_keys="tool").root_keys == ("tool",)

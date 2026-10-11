@@ -148,6 +148,7 @@ class ConfigFromFile(ConfigBase, frozen=False):
     "Conditions under which ``_config`` was loaded."
 
     def __post_init__(self) -> None:
+        super().__post_init__()
         if self.path is None:
             raise TypeError("missing required argument: 'path'")
         self.path = Path(self.path)
@@ -227,6 +228,7 @@ class Dict(ConfigBase, frozen=False):
     data: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
+        super().__post_init__()
         if self.data is None:
             raise TypeError("missing required argument: 'data'")
 

@@ -1544,3 +1544,13 @@ def test_description_renderer_no_extra_whitespace():
         if line.strip():  # Skip empty lines
             # The line should start with "[metadata...]" with no indentation
             assert line.startswith("["), f"Line should not be indented: {repr(line)}"
+
+
+def test_spec_copy_overrides_only_the_given_fields():
+    column = ColumnSpec(renderer="name", header="Name")
+    table = TableSpec(show_header=True)
+    panel = PanelSpec(title="Original")
+
+    assert column.copy(header="Renamed") == ColumnSpec(renderer="name", header="Renamed")
+    assert table.copy(show_header=False) == TableSpec(show_header=False)
+    assert panel.copy(title="Renamed") == PanelSpec(title="Renamed")
