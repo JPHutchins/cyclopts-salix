@@ -1,12 +1,10 @@
 ============
 User Classes
 ============
-Cyclopts supports classically defined user classes, as well as classes defined by the following dataclass-like libraries:
+Cyclopts supports classically defined user classes, as well as classes defined by the following libraries:
 
-* `attrs <https://www.attrs.org/en/stable/>`_
-* `dataclass <https://docs.python.org/3/library/dataclasses.html>`_
+* `salix <https://github.com/JPHutchins/salix>`_
 * `pydantic <https://docs.pydantic.dev/latest/>`_
-* `NamedTuple <https://docs.python.org/3/library/typing.html#typing.NamedTuple>`_
 * `TypedDict <https://docs.python.org/3/library/typing.html#typing.TypedDict>`_
 
 Basic Example

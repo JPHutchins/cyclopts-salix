@@ -346,7 +346,6 @@ toml = [
 name = "cyclopts"
 source = { editable = "." }
 dependencies = [
-    { name = "attrs" },
     { name = "docstring-parser" },
     { name = "rich" },
     { name = "rich-rst" },
@@ -399,7 +398,6 @@ yaml = [
 
 [package.metadata]
 requires-dist = [
-    { name = "attrs", specifier = ">=23.1.0" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=5.1" },
     { name = "docstring-parser", specifier = ">=0.15,<4.0" },
     { name = "gitpython", marker = "extra == 'docs'", specifier = ">=3.1.31" },
