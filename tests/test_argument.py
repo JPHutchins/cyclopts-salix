@@ -1028,7 +1028,7 @@ def test_argument_collection_contains_with_filtered():
             Argument(
                 tokens=[Token(keyword="--foo", value="100", source="test")],
                 parameter=Parameter(name="--foo"),
-                value=100,
+                _value=100,
             ),
             Argument(
                 parameter=Parameter(name="--bar"),
@@ -1036,7 +1036,7 @@ def test_argument_collection_contains_with_filtered():
             Argument(
                 tokens=[Token(keyword="--baz", value="text", source="test")],
                 parameter=Parameter(name="--baz"),
-                value="text",
+                _value="text",
             ),
         ]
     )

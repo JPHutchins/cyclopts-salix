@@ -403,7 +403,7 @@ def _is_dynamic_structured_dict(argument: "Argument") -> bool:
 
     Covers pydantic, dataclass, attrs, TypedDict, NamedTuple via the shared
     ``get_field_infos`` dispatcher.  Uses the same indicators as the parser's
-    dict branch in ``Argument.__attrs_post_init__``: ``_accepts_keywords`` is
+    dict branch in ``Argument.__post_init__``: ``_accepts_keywords`` is
     set, ``_lookup`` is empty (no pre-built children — keys are dynamic), and
     ``_default`` is the value type with structured fields.
 

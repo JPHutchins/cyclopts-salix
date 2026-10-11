@@ -10,7 +10,7 @@ from contextlib import suppress
 from functools import partial, reduce
 from typing import TYPE_CHECKING, Any, get_args, get_origin
 
-from attrs import define, field
+from salix import Struct
 
 from cyclopts._convert import (
     _validate_json_extra_keys,
@@ -70,41 +70,40 @@ if TYPE_CHECKING:
     from cyclopts.argument._collection import ArgumentCollection
 
 
-@define(kw_only=True)
-class Argument:
+class Argument(Struct, frozen=False):
     """Encapsulates functionality and additional contextual information for parsing a parameter.
 
     An argument is defined as anything that would have its own entry in the help page.
     """
 
-    tokens: list[Token] = field(factory=list)
+    tokens: list[Token] = []
     """
     List of :class:`.Token` parsed from various sources.
     Do not directly mutate; see :meth:`append`.
     """
 
-    field_info: FieldInfo = field(factory=FieldInfo)
+    field_info: FieldInfo = FieldInfo()
     """
     Additional information about the parameter from surrounding python syntax.
     """
 
-    parameter: Parameter = field(factory=Parameter)
+    parameter: Parameter = Parameter()
     """
     Fully resolved user-provided :class:`.Parameter`.
     """
 
-    hint: Any = field(default=str, converter=resolve)
+    hint: Any = str
     """
     The type hint for this argument; may be different from :attr:`.FieldInfo.annotation`.
     """
 
-    index: int | None = field(default=None)
+    index: int | None = None
     """
     Associated python positional index for argument.
     If ``None``, then cannot be assigned positionally.
     """
 
-    keys: tuple[str, ...] = field(default=())
+    keys: tuple[str, ...] = ()
     """
     **Python** keys that lead to this leaf.
 
@@ -144,33 +143,33 @@ class Argument:
         name: --fullname       hint: <class 'str'>    keys: ('name',)
     """
 
-    _value: Any = field(alias="value", default=UNSET)
+    _value: Any = UNSET
     """
     Converted value from last :meth:`convert` call.
     This value may be stale if fields have changed since last :meth:`convert` call.
     :class:`.UNSET` if :meth:`convert` has not yet been called with tokens.
     """
 
-    _accepts_keywords: bool = field(default=False, init=False, repr=False)
+    _accepts_keywords: bool = False
 
-    _default: Any = field(default=None, init=False, repr=False)
-    _lookup: dict[str, FieldInfo] = field(factory=dict, init=False, repr=False)
+    _default: Any = None
+    _lookup: dict[str, FieldInfo] = {}
 
-    children: "ArgumentCollection" = field(init=False, repr=False)
+    children: "ArgumentCollection" = None  # type: ignore[assignment]
     """
     Collection of other :class:`Argument` that eventually culminate into the python variable represented by :attr:`field_info`.
     """
 
-    _marked_converted: bool = field(default=False, init=False, repr=False)
-    _mark_converted_override: bool = field(default=False, init=False, repr=False)
+    _marked_converted: bool = False
+    _mark_converted_override: bool = False
 
-    _missing_keys_checker: Callable | None = field(default=None, init=False, repr=False)
+    _missing_keys_checker: Callable | None = None
 
-    _internal_converter: Callable | None = field(default=None, init=False, repr=False)
+    _internal_converter: Callable | None = None
 
-    _enum_flag_type: Any | None = field(default=None, init=False, repr=False)
+    _enum_flag_type: Any | None = None
 
-    _union_branches: "list[tuple[Any, dict[str, FieldInfo]]]" = field(factory=list, init=False, repr=False)
+    _union_branches: "list[tuple[Any, dict[str, FieldInfo]]]" = []
     """Per-branch ``(member_type, field_infos)`` when :attr:`hint` is a ``Union`` of 2+ keyword-accepting types.
 
     Empty for non-unions and single-composite optionals (e.g. ``Foo | None``). Drives
@@ -179,12 +178,18 @@ class Argument:
     See :meth:`_active_branch_required_keys` and :meth:`_resolve_union_member`.
     """
 
-    def __attrs_post_init__(self):
+    def __repr__(self) -> str:
+        return (
+            f"Argument(tokens={self.tokens!r}, field_info={self.field_info!r}, parameter={self.parameter!r}, "
+            f"hint={self.hint!r}, index={self.index!r}, keys={self.keys!r}, value={self._value!r})"
+        )
+
+    def __post_init__(self):
         from cyclopts.argument._collection import ArgumentCollection
 
         self.children = ArgumentCollection()
 
-        hint = resolve(self.hint)
+        hint = self.hint = resolve(self.hint)
         hints = get_args(hint) if is_union(hint) else (hint,)
 
         if self.parameter.count:
