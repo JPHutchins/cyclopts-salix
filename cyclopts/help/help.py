@@ -11,7 +11,8 @@ from typing import (
     Literal,
 )
 
-from attrs import define, evolve, field
+from attrs import define, field
+import salix
 from salix import Struct
 
 if sys.version_info >= (3, 11):
@@ -130,9 +131,7 @@ class HelpEntry(Struct, frozen=True):
     """Default value for this parameter to display. None means no default to show."""
 
     def copy(self, **kwargs: Any) -> Self:
-        values = {name: getattr(self, name) for name in self.__struct_fields__}
-        values.update(kwargs)
-        return type(self)(**values)
+        return salix.replace(self, **kwargs)
 
 
 class HelpPanel(Struct, frozen=False):
@@ -157,9 +156,7 @@ class HelpPanel(Struct, frozen=False):
         self.description = _description_converter(self.description)
 
     def copy(self, **kwargs: Any) -> Self:
-        values = {name: getattr(self, name) for name in self.__struct_fields__}
-        values.update(kwargs)
-        return type(self)(**values)
+        return salix.replace(self, **kwargs)
 
     def _remove_duplicates(self):
         seen, out = set(), []
@@ -463,9 +460,7 @@ def _expand_structured_dict_for_help(
         base = _make_help_entry(argument, format)
         if outer_long_names:
             suffixed_names = tuple(f"{n}.{{NAME}}" for n in base.positive_names)
-            values = {name: getattr(base, name) for name in base.__struct_fields__}
-            values["positive_names"] = suffixed_names
-            yield type(base)(**values)
+            yield salix.replace(base, positive_names=suffixed_names)
         else:
             yield base
         return

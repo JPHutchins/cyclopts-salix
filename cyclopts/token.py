@@ -1,5 +1,6 @@
 from typing import Any
 
+import salix
 from salix import Struct
 
 from cyclopts.utils import UNSET
@@ -21,6 +22,4 @@ class Token(Struct, frozen=True):
         return (self.keys, self.index)
 
     def evolve(self, **kwargs) -> "Token":
-        values = {name: getattr(self, name) for name in self.__struct_fields__}
-        values.update(kwargs)
-        return type(self)(**values)
+        return salix.replace(self, **kwargs)

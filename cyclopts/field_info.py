@@ -128,9 +128,7 @@ class FieldInfo(Struct, frozen=True):
         return self.kind in (KEYWORD_ONLY, VAR_KEYWORD)
 
     def evolve(self, **kwargs):
-        values = {name: getattr(self, name) for name in self.__struct_fields__}
-        values.update(kwargs)
-        return type(self)(**values)
+        return salix.replace(self, **kwargs)
 
 
 def _typed_dict_field_infos(typeddict) -> dict[str, FieldInfo]:
